@@ -72,6 +72,84 @@ docker run -d -p 8081:8081 -p 4002:4002 -p 4003:4003 \
 
 访问 `http://<your-server>:8081`,默认用户名 `admin`,密码在 `/nexus-data/admin.password`。
 
+#### 配置Nginx代理，实现HTTPS访问
+
+```nginx
+server {
+    listen 4012;
+    listen 4002 ssl;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE:ECDH:AES:HIGH:!NULL:!aNULL:!MD5:!ADH:!RC4:!DH:!DHE;
+    ssl_prefer_server_ciphers on;
+    ssl_certificate ssl/demo_com.crt;
+    ssl_certificate_key ssl/demo_com.key;
+    server_name your-docker-repo.demo.com;
+    # disable any limits to avoid HTTP 413 for large image uploads
+    client_max_body_size 0;
+    # required to avoid HTTP 411: see Issue #1486 (https://github.com/docker/docker/issues/1486)
+    chunked_transfer_encoding on;
+    # Docker /v2 and /v1 (for search) requests
+    location /v2 {
+        proxy_set_header Host $host:$server_port;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto "https";
+        proxy_pass http://nexus3/repository/docker-group/$request_uri;
+    }
+    location /v1 {
+        proxy_set_header Host $host:$server_port;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto "https";
+        proxy_pass http://nexus3/repository/docker-group/$request_uri;
+    }
+
+    location / {
+        proxy_pass https://docker-groups_ssl_upstream;
+        proxy_set_header X-Forwarded-Proto "https";
+        include include/proxy.conf; # 代理配置略
+    }
+}
+
+server {
+    listen 4013;
+    listen 4003 ssl;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE:ECDH:AES:HIGH:!NULL:!aNULL:!MD5:!ADH:!RC4:!DH:!DHE;
+    ssl_prefer_server_ciphers on;
+    ssl_certificate ssl/demo_com.crt;
+    ssl_certificate_key ssl/demo_com.key;
+    server_name your-docker-repo.demo.com;
+    # disable any limits to avoid HTTP 413 for large image uploads
+    client_max_body_size 0;
+    # required to avoid HTTP 411: see Issue #1486 (https://github.com/docker/docker/issues/1486)
+    chunked_transfer_encoding on;
+    # Docker /v2 and /v1 (for search) requests
+    location /v2 {
+        proxy_set_header Host $host:$server_port;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto "https";
+        proxy_pass http://nexus3/repository/docker-hosted-noauth/$request_uri;
+    }
+    location /v1 {
+        proxy_set_header Host $host:$server_port;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto "https";
+        proxy_pass http://nexus3/repository/docker-hosted-noauth/$request_uri;
+    }
+
+    location / {
+        proxy_pass https://docker_hosts_noauth_ssl_upstream;
+        proxy_set_header X-Forwarded-Proto "https";
+        include include/proxy.conf; # 代理配置略
+    }
+}
+```
+
+
+
 #### 配置 Docker 仓库
 
 在 Nexus 中创建以下 Docker 仓库:
@@ -82,13 +160,13 @@ docker run -d -p 8081:8081 -p 4002:4002 -p 4003:4003 \
    - 用途: 缓存 Docker Hub 镜像
 
 2. **Docker (hosted)** - 端口 4003
-   - 名称: `docker-hosted`
+   - 名称: `docker-hosted-noauth`
    - HTTP 端口: 4003
    - 用途: 存储自定义构建的镜像 (如 `coredns:1.14.1-view`)
 
 3. **Docker (group)** - 端口 4002
    - 名称: `docker-group`
-   - 成员仓库: `docker-proxy`, `docker-hosted`
+   - 成员仓库: `docker-proxy`, `docker-hosted-noauth`
    - HTTP 端口: 4002
    - 用途: 统一访问入口
 
@@ -100,8 +178,7 @@ docker run -d -p 8081:8081 -p 4002:4002 -p 4003:4003 \
 # /etc/docker/daemon.json
 {
   "insecure-registries": [
-    "your-docker-repo.demo.com:4002",
-    "your-docker-repo.demo.com:4003"
+    "your-docker-repo.demo.com:4012"
   ],
   "registry-mirrors": [
     "https://your-docker-repo.demo.com:4002"
