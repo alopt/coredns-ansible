@@ -1,0 +1,99 @@
+- hosts: coredns
+  serial: 1  # 逐台执行，确保 DNS 服务连续性
+  vars:
+    # CoreDNS 版本和镜像配置
+    coredns_version: "1.14.1-view"
+    coredns_image: "your-docker-repo.demo.com:4002/coredns"
+    docker_registry_mirrors:
+      - "https://your-docker-repo.demo.com:4002"
+    docker_insecure_registries:
+      - "your-docker-repo.demo.com"
+    # 是否安装 Docker, 默认关闭
+    docker_install_enabled: false
+    # 上游 DNS 服务器
+    coredns_upstream_servers:
+      - 192.168.0.100
+      - 192.168.0.101
+    coredns_cache_ttl: 300
+    # 网络配置, 确保与现有网络不冲突, 且与Makefile中定义的网络一致
+    coredns_network_subnet: "192.168.100.0/24"
+    coredns_network_gateway: "192.168.100.1"
+    # 配置验证和重载
+    coredns_validate_config: true
+    coredns_reload_method: "reload"
+    # ============================================================
+    # hosts 文件配置
+    # ============================================================
+    coredns_hosts_entries:
+      # === 生产环境运维 ===
+      - 10.100.1.212 git-ops.demo.cn
+      # === 开发环境基础设施 ===
+      - 10.21.70.81 uc-dev.demo.cn
+    # ============================================================
+    # 特定域名转发
+    # ============================================================
+    coredns_forward_zones:
+      # GitHub 相关
+      - domains:
+          - github.com
+          - githubassets.com
+          - githubusercontent.com
+        upstream: 223.5.5.5
+      # Google 相关
+      - domains:
+          - google.com
+          - google.com.hk
+        upstream: 223.5.5.5
+    # ============================================================
+    # 视图配置 (View-based DNS - 智能解析)
+    # CoreDNS 1.14.1 语法: expr incidr(client_ip(), 'CIDR')
+    # ============================================================
+    coredns_view_enabled: true
+    # 视图智能解析规则
+    coredns_view_rules:
+      - domain: "test2026.demo.cn"
+        views:
+          - name: "internal"
+            cidr: "10.21.0.0/16"
+            ttl: 60
+            ips:
+              - "10.21.70.81"
+          - name: "aliyun"
+            cidr: "10.100.1.0/24"
+            ttl: 60
+            ips:
+              - "192.168.70.81"
+          - name: "dmz"
+            cidr: "10.21.36.0/22"
+            ttl: 60
+            ips:
+              - "10.21.70.61"
+          - name: "vpn"
+            cidr: "10.20.0.0/16"
+            ttl: 60
+            ips:
+              - "10.20.70.61"
+              - "10.20.70.81"
+        default:
+          ttl: 60
+          ips:
+            - "10.21.70.61"
+    # ============================================================
+    # 正则匹配解析 - 泛域名
+    # 使用 Go 正则表达式语法
+    # ============================================================
+    coredns_regex_rules:
+      - zone: "demo.cn"
+        rules:
+          # 匹配 *-dev.demo.cn (如 an-dev, ac-dev, test-dev)
+          - pattern: "^[a-zA-Z0-9]+-dev[.]demo[.]cn[.]$"
+            comment: "泛域名 *-dev.demo.cn 解析到开发环境"
+            ttl: 60
+            ips:
+              - "10.21.70.81"
+          # 匹配 *-ops.demo.cn (如 git-ops, jenkins-ops)
+          - pattern: "^[a-zA-Z0-9]+-ops[.]demo[.]cn[.]$"
+            comment: "泛域名 *-ops.demo.cn 解析到生产环境"
+            ttl: 60
+            ips:
+              - "10.100.1.212"

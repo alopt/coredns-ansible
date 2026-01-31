@@ -1,0 +1,133 @@
+# roles/coredns/defaults/main.yml
+---
+# ============================================================
+# CoreDNS 部署配置 (docker-compose 方式)
+# ============================================================
+
+# 部署目录 (与目标节点一致)
+coredns_deploy_dir: "/root/coredns"
+coredns_logs_dir: "/data/docker/coredns/logs"
+
+# CoreDNS 镜像配置
+coredns_image: "your-docker-repo.demo.com:4003/coredns"
+coredns_version: "1.14.1-view"
+
+# 上游 DNS 服务器
+coredns_upstream_servers:
+  - 192.168.0.100
+  - 192.168.0.101
+
+# DNS 端口
+coredns_dns_port: 53
+coredns_health_port: 8080
+coredns_metrics_port: 9153
+
+# 缓存时间（秒）
+coredns_cache_ttl: 300
+
+# # 配置自动重载间隔,目前是通过剧本手动发布的方式实现，所以这里不配置自动
+# # 例外：hosts文件会自动重载（coredns_hosts_entries中的解析域名）
+# coredns_reload_interval: "10s"
+
+# 日志轮转配置
+coredns_logrotate_days: 30
+
+# ============================================================
+# hosts 文件配置
+# ============================================================
+coredns_hosts_entries: []
+
+# ============================================================
+# 特定域名转发
+# ============================================================
+coredns_forward_zones: []
+
+# ============================================================
+# 视图配置 (View-based DNS - 智能解析)
+# ============================================================
+coredns_view_enabled: false
+coredns_view_rules: []
+
+# ============================================================
+# 正则匹配解析 (泛域名)
+# ============================================================
+coredns_regex_rules: []
+
+# ============================================================
+# 部署选项
+# ============================================================
+
+# 是否同步 Dockerfile/Makefile/plugin.cfg (用于构建镜像)
+coredns_sync_build_files: false
+
+# 配置验证
+coredns_validate_config: true
+
+# 重载方式: restart 或 reload (SIGUSR1)
+coredns_reload_method: "reload"
+
+# ============================================================
+# Docker daemon.json 配置
+# ============================================================
+docker_daemon_config: true
+docker_debug: false
+docker_experimental: false
+docker_iptables: false
+docker_log_max_file: "7"
+docker_log_max_size: "50m"
+docker_registry_mirrors:
+  - "https://your-docker-repo.demo.com:4002"
+docker_insecure_registries:
+  - "your-docker-repo.demo.com:4012"
+
+# ============================================================
+# Docker 安装配置
+# ============================================================
+
+# 是否安装 Docker (使用脚本安装方式)
+docker_install_enabled: false
+
+# Docker 安装配置，使用清华源
+docker_install_gpg_url: "https://mirrors.tuna.tsinghua.edu.cn/docker-ce/linux/ubuntu/gpg"
+docker_install_repo_url: "https://mirrors.tuna.tsinghua.edu.cn/docker-ce/linux/ubuntu"
+docker_install_arch: "amd64"
+
+# Docker 版本配置 (Ubuntu 22.04 Jammy)，指定版本以确保一致性
+docker_install_ce_version: "5:24.0.9-1~ubuntu.22.04~jammy"
+docker_install_containerd_version: "1.6.33-1"
+
+# docker-compose 下载地址
+docker_compose_download_url: "https://github.com/docker/compose/releases/latest/download/docker-compose-Linux-x86_64"
+
+# 代理配置 (可选)
+docker_install_proxy_enabled: false
+docker_install_proxy_url: "http://<your-proxy-server>:8001"
+
+# 添加用户到 docker 组，因为本次使用ubunt 22.04 默认用户 ubuntu
+docker_install_add_user: true
+docker_install_user: "ubuntu"
+
+# ============================================================
+# Makefile 构建配置
+# ============================================================
+
+# 镜像仓库配置
+coredns_registry: "your-docker-repo.demo.com:4003"
+coredns_image_name: "coredns"
+
+# CoreDNS 和 Go 版本
+coredns_build_version: "1.14.1"
+coredns_go_version: "1.24"
+
+# ============================================================
+# Docker 网络配置
+# ============================================================
+
+# Docker Compose 网络配置 (需要与 Makefile 中的 iptables 规则一致)
+coredns_network_subnet: "192.168.100.0/24"
+coredns_network_gateway: "192.168.100.1"
+
+# 用于 Makefile init-system 配置的 DNS 服务器
+coredns_system_dns_servers:
+  - "192.168.0.100"
+  - "192.168.0.101"

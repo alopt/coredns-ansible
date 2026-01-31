@@ -1,0 +1,7 @@
+# {{ ansible_managed }}
+# CoreDNS hosts file
+# 类似 dnsmasq 的 addn-hosts 功能
+
+{% for entry in coredns_hosts_entries %}
+{{ entry }}
+{% endfor %}

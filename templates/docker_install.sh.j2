@@ -1,0 +1,46 @@
+#!/bin/bash
+# {{ ansible_managed }}
+# Docker CE 安装脚本 (Ubuntu)
+# 使用清华大学镜像源加速下载
+
+set -e
+
+# 添加 Docker GPG 密钥
+curl -fsSL {{ docker_install_gpg_url }} | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+
+# 添加 Docker APT 源
+echo "deb [arch={{ docker_install_arch }} signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] {{ docker_install_repo_url }} $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+# 更新 APT 缓存
+apt update -y
+
+# 安装 Docker CE 和相关组件
+DEBIAN_FRONTEND=noninteractive apt install -y \
+    docker-ce={{ docker_install_ce_version }} \
+    docker-ce-cli={{ docker_install_ce_version }} \
+    containerd.io={{ docker_install_containerd_version }} \
+    docker-buildx-plugin \
+    docker-compose-plugin
+
+# 下载 docker-compose (独立版本)
+{% if docker_install_proxy_enabled | default(false) %}
+export https_proxy="{{ docker_install_proxy_url }}"; \
+{% endif %}
+curl -L {{ docker_compose_download_url }} > /usr/local/bin/docker-compose
+chmod +x /usr/local/bin/docker-compose
+
+# 锁定版本,防止意外升级
+apt-mark hold docker-ce docker-ce-cli containerd.io
+
+# 启用并启动 Docker 服务
+systemctl enable docker
+systemctl start docker
+
+# 将用户添加到 docker 组 (可选)
+{% if docker_install_add_user | default(true) %}
+usermod -aG docker {{ docker_install_user }}
+{% endif %}
+
+echo "Docker 安装完成!"
+docker --version
+docker-compose --version

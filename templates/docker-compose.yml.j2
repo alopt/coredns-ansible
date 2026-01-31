@@ -1,0 +1,43 @@
+# {{ ansible_managed }}
+version: '3.8'
+
+services:
+  coredns:
+    # 使用自编译的包含 view 插件的镜像
+    image: {{ coredns_image }}:{{ coredns_version }}
+    container_name: coredns
+    restart: always
+    user: root
+    volumes:
+      # 挂载整个目录，支持 import 和 SIGUSR1 热加载
+      - {{ coredns_deploy_dir }}/config:{{ coredns_deploy_dir }}/config:ro
+      - {{ coredns_logs_dir }}:/var/log/coredns
+    command: -conf {{ coredns_deploy_dir }}/config/Corefile
+    environment:
+      TZ: Asia/Shanghai
+    ports:
+      - "{{ coredns_dns_port }}:53/udp"
+      - "{{ coredns_dns_port }}:53/tcp"
+      - "{{ coredns_metrics_port }}:9153"
+      - "{{ coredns_health_port }}:8080"
+    networks:
+      - coredns-net
+    healthcheck:
+      test: ["CMD", "nslookup", "health.check", "127.0.0.1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
+
+networks:
+  coredns-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: {{ coredns_network_subnet }} # 网段必须在 Makefile 中定义并配置 iptables 转发
+          gateway: {{ coredns_network_gateway }}

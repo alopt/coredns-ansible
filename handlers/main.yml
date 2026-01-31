@@ -1,0 +1,66 @@
+# roles/coredns/handlers/main.yml
+# 使用 serial: 1 + 30秒延迟确保 DNS 服务连续性
+---
+- name: reload docker
+  shell: systemctl reload docker || systemctl restart docker
+  tags:
+    - coredns
+    - docker
+    - docker-config
+
+- name: restart coredns
+  shell: |
+    cd {{ coredns_deploy_dir }}
+    docker-compose down
+    docker-compose up -d
+  notify: wait before next host
+  tags:
+    - coredns
+    - config
+    - configuration
+
+- name: reload coredns
+  shell: |
+    cd {{ coredns_deploy_dir }}
+    # 验证配置语法
+    echo ">>> 验证 CoreDNS 配置..."
+    if docker exec coredns nslookup health.check 127.0.0.1 > /dev/null 2>&1; then
+      echo ">>> 配置验证通过，执行热重载..."
+      docker kill --signal=SIGUSR1 coredns
+      sleep 2
+      # 重载后再次验证
+      if docker exec coredns nslookup health.check 127.0.0.1 > /dev/null 2>&1; then
+        echo ">>> CoreDNS 配置重载成功"
+      else
+        echo ">>> 警告: 重载后验证失败"
+        exit 1
+      fi
+    else
+      echo ">>> 错误: 配置验证失败，跳过重载"
+      exit 1
+    fi
+  notify: wait before next host
+  tags:
+    - coredns
+    - config
+    - configuration
+
+- name: validate coredns config
+  shell: |
+    sleep 2
+    nslookup health.check 127.0.0.1
+  register: dns_validation
+  failed_when: dns_validation.rc != 0
+  tags:
+    - coredns
+    - config
+    - configuration
+
+- name: wait before next host
+  pause:
+    seconds: 30
+    prompt: ">>> 等待 30 秒后继续下一台主机..."
+  tags:
+    - coredns
+    - config
+    - configuration

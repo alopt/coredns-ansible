@@ -1,0 +1,405 @@
+# roles/coredns/tasks/main.yml
+# CoreDNS Docker-Compose 部署任务
+# 部署目录: {{ coredns_deploy_dir }} (默认 /root/coredns)
+---
+
+# ============================================================
+# 环境准备
+# ============================================================
+
+# ============================================================
+# Docker 安装 (脚本方式 - 可选)
+# ============================================================
+
+- name: Check if Docker is already installed
+  shell: which docker
+  register: docker_exists
+  changed_when: false
+  failed_when: false
+  when: docker_install_enabled | default(false)
+  tags:
+    - coredns
+    - docker
+    - docker-install
+
+- name: Deploy Docker installation script
+  template:
+    src: docker_install.sh.j2
+    dest: /tmp/docker_install.sh
+    owner: root
+    group: root
+    mode: '0755'
+  when:
+    - docker_install_enabled | default(false)
+    - docker_exists.rc != 0
+  tags:
+    - coredns
+    - docker
+    - docker-install
+
+- name: Execute Docker installation script
+  shell: /tmp/docker_install.sh
+  args:
+    executable: /bin/bash
+  register: docker_install_result
+  when:
+    - docker_install_enabled | default(false)
+    - docker_exists.rc != 0
+  tags:
+    - coredns
+    - docker
+    - docker-install
+
+- name: Remove Docker installation script
+  file:
+    path: /tmp/docker_install.sh
+    state: absent
+  when: docker_install_enabled | default(false)
+  tags:
+    - coredns
+    - docker
+    - docker-install
+
+- name: Display Docker installation result
+  debug:
+    msg: "{{ docker_install_result.stdout_lines | default(['Docker already installed or installation skipped']) }}"
+  when: docker_install_enabled | default(false)
+  tags:
+    - coredns
+    - docker
+    - docker-install
+
+# ============================================================
+# 确保 Docker 已安装 (包管理器方式)
+# ============================================================
+
+- name: Ensure Docker is installed
+  package:
+    name: docker
+    state: present
+  tags:
+    - coredns
+    - docker
+
+- name: Check if docker-compose is installed
+  shell: which docker-compose || which docker
+  register: docker_compose_check
+  changed_when: false
+  failed_when: false
+  tags:
+    - coredns
+    - docker
+
+- name: Install docker-compose via pip (if not available)
+  pip:
+    name: docker-compose
+    state: present
+  when: docker_compose_check.rc != 0
+  ignore_errors: yes
+  tags:
+    - coredns
+    - docker
+
+# ============================================================
+# 创建部署目录结构
+# ============================================================
+
+- name: Create CoreDNS deploy directory
+  file:
+    path: "{{ coredns_deploy_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  tags:
+    - coredns
+    - configuration
+    - config
+
+- name: Create CoreDNS config directory
+  file:
+    path: "{{ coredns_deploy_dir }}/config"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  tags:
+    - coredns
+    - configuration
+    - config
+
+- name: Create CoreDNS zones directory
+  file:
+    path: "{{ coredns_deploy_dir }}/config/zones"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  tags:
+    - coredns
+    - configuration
+    - config
+
+- name: Create CoreDNS logs directory
+  file:
+    path: "{{ coredns_logs_dir }}"
+    state: directory
+    owner: "1000"  # 修改此处：指定 UID 1000
+    group: "1000"  # 修改此处：指定 GID 1000
+    mode: '0755'
+  tags:
+    - coredns
+    - configuration
+
+# ============================================================
+# 部署配置文件
+# ============================================================
+
+- name: Deploy docker-compose.yml
+  template:
+    src: docker-compose.yml.j2
+    dest: "{{ coredns_deploy_dir }}/docker-compose.yml"
+    owner: root
+    group: root
+    mode: '0644'
+  notify: restart coredns
+  tags:
+    - coredns
+    - configuration
+    - config
+
+- name: Deploy Corefile
+  template:
+    src: Corefile.j2
+    dest: "{{ coredns_deploy_dir }}/config/Corefile"
+    owner: root
+    group: root
+    mode: '0644'
+  notify: restart coredns
+  tags:
+    - coredns
+    - configuration
+    - config
+
+- name: Deploy hosts file
+  template:
+    src: hosts.j2
+    dest: "{{ coredns_deploy_dir }}/config/hosts"
+    owner: root
+    group: root
+    mode: '0644'
+  when: coredns_hosts_entries | default([]) | length > 0
+  notify: reload coredns
+  tags:
+    - coredns
+    - configuration
+    - config
+
+- name: Create empty hosts file if no entries
+  copy:
+    content: "# {{ ansible_managed }}\n# CoreDNS hosts file (empty)\n"
+    dest: "{{ coredns_deploy_dir }}/config/hosts"
+    owner: root
+    group: root
+    mode: '0644'
+  when: coredns_hosts_entries | default([]) | length == 0
+  notify: reload coredns
+  tags:
+    - coredns
+    - configuration
+    - config
+
+# ============================================================
+# 部署 zone 配置文件 (支持 SIGUSR1 热加载)
+# ============================================================
+
+- name: Deploy views.conf (View-based DNS)
+  template:
+    src: zones/views.conf.j2
+    dest: "{{ coredns_deploy_dir }}/config/zones/views.conf"
+    owner: root
+    group: root
+    mode: '0644'
+  notify: reload coredns
+  tags:
+    - coredns
+    - configuration
+    - config
+
+- name: Deploy regex.conf (正则匹配泛域名)
+  template:
+    src: zones/regex.conf.j2
+    dest: "{{ coredns_deploy_dir }}/config/zones/regex.conf"
+    owner: root
+    group: root
+    mode: '0644'
+  notify: reload coredns
+  tags:
+    - coredns
+    - configuration
+    - config
+
+- name: Deploy forward-zones.conf (特定域名转发)
+  template:
+    src: zones/forward-zones.conf.j2
+    dest: "{{ coredns_deploy_dir }}/config/zones/forward-zones.conf"
+    owner: root
+    group: root
+    mode: '0644'
+  notify: reload coredns
+  tags:
+    - coredns
+    - configuration
+    - config
+
+# ============================================================
+# 部署构建文件 (可选 - 用于构建镜像)
+# ============================================================
+
+- name: Deploy Dockerfile
+  copy:
+    src: Dockerfile
+    dest: "{{ coredns_deploy_dir }}/Dockerfile"
+    owner: root
+    group: root
+    mode: '0644'
+  tags:
+    - coredns
+    - build
+
+- name: Deploy Makefile
+  template:
+    src: Makefile.j2
+    dest: "{{ coredns_deploy_dir }}/Makefile"
+    owner: root
+    group: root
+    mode: '0644'
+  tags:
+    - coredns
+    - build
+
+- name: Deploy plugin.cfg
+  copy:
+    src: plugin.cfg
+    dest: "{{ coredns_deploy_dir }}/plugin.cfg"
+    owner: root
+    group: root
+    mode: '0644'
+  when: coredns_sync_build_files | default(false)
+  tags:
+    - coredns
+    - build
+
+# ============================================================
+# 部署 zone 文件 (如果配置了内部 zone)
+# ============================================================
+
+- name: Deploy zone files
+  template:
+    src: zone.j2
+    dest: "{{ coredns_deploy_dir }}/config/zones/{{ item.name }}"
+    owner: root
+    group: root
+    mode: '0644'
+  loop: "{{ coredns_internal_zones | default([]) }}"
+  when: coredns_internal_zones | default([]) | length > 0
+  notify: reload coredns
+  tags:
+    - coredns
+    - configuration
+    - config
+
+# ============================================================
+# 部署日志轮转配置
+# ============================================================
+
+- name: Deploy logrotate configuration
+  template:
+    src: logrotate.coredns.j2
+    dest: /etc/logrotate.d/coredns
+    owner: root
+    group: root
+    mode: '0644'
+  tags:
+    - coredns
+    - configuration
+
+# ============================================================
+# Docker daemon.json 配置
+# ============================================================
+
+- name: Deploy Docker daemon.json
+  template:
+    src: daemon.json.j2
+    dest: /etc/docker/daemon.json
+    owner: root
+    group: root
+    mode: '0644'
+  when: docker_daemon_config | default(true)
+  notify: reload docker
+  tags:
+    - coredns
+    - docker
+    - docker-config
+
+# ============================================================
+# Docker 操作
+# ============================================================
+
+- name: Pull CoreDNS image
+  shell: docker pull {{ coredns_image }}:{{ coredns_version }}
+  register: docker_pull_result
+  changed_when: "'Downloaded newer image' in docker_pull_result.stdout or 'Pull complete' in docker_pull_result.stdout"
+  tags:
+    - coredns
+    - docker
+
+- name: Start CoreDNS with docker-compose
+  shell: |
+    cd {{ coredns_deploy_dir }}
+    docker-compose up -d
+  register: coredns_started
+  changed_when: "'Creating' in coredns_started.stdout or 'Starting' in coredns_started.stdout"
+  tags:
+    - coredns
+    - docker
+
+- name: Wait for CoreDNS to be healthy
+  wait_for:
+    host: 127.0.0.1
+    port: "{{ coredns_dns_port }}"
+    delay: 5
+    timeout: 60
+  tags:
+    - coredns
+    - docker
+
+# ============================================================
+# 配置验证 (仅在完整部署时执行)
+# ============================================================
+
+- name: Validate CoreDNS configuration syntax
+  shell: |
+    docker exec coredns /usr/local/bin/coredns -plugins 2>&1 | head -20
+    if docker exec coredns nslookup health.check 127.0.0.1 > /dev/null 2>&1; then
+      echo "CONFIG_VALID"
+    else
+      echo "CONFIG_INVALID"
+      exit 1
+    fi
+  register: config_validation
+  changed_when: false
+  when: coredns_validate_config | default(true)
+  tags:
+    - coredns
+    - validate
+
+- name: Display configuration validation result
+  debug:
+    msg: "CoreDNS configuration is valid"
+  when:
+    - coredns_validate_config | default(true)
+    - config_validation.rc == 0
+  tags:
+    - coredns
+    - validate

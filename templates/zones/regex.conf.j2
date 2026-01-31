@@ -1,0 +1,31 @@
+# {{ ansible_managed }}
+# 正则匹配解析 - 泛域名配置
+# 使用 Go 正则表达式语法
+# 支持 SIGUSR1 热加载
+
+{% if coredns_regex_rules | default([]) | length > 0 %}
+{% for zone_rule in coredns_regex_rules %}
+# 正则匹配: {{ zone_rule.zone }}
+{{ zone_rule.zone }} {
+{% if coredns_hosts_entries | default([]) | length > 0 %}
+    # hosts 优先于正则匹配
+    hosts {{ coredns_deploy_dir }}/config/hosts {
+        fallthrough
+    }
+{% endif %}
+{% for rule in zone_rule.rules %}
+    template IN A {
+        # {{ rule.comment | default('正则匹配规则') }}
+        match {{ rule.pattern }}
+{% for ip in rule.ips %}
+        answer "{% raw %}{{ .Name }}{% endraw %} {{ rule.ttl | default(60) }} IN A {{ ip }}"
+{% endfor %}
+        fallthrough
+    }
+{% endfor %}
+}
+
+{% endfor %}
+{% else %}
+# 无正则匹配规则配置
+{% endif %}

@@ -1,0 +1,28 @@
+; {{ ansible_managed }}
+; Zone file for {{ item.name }}
+
+$ORIGIN {{ item.name }}.
+$TTL 3600
+
+@       IN      SOA     ns1.{{ item.name }}. admin.{{ item.name }}. (
+                        {{ ansible_date_time.epoch }}  ; Serial
+                        3600            ; Refresh
+                        600             ; Retry
+                        86400           ; Expire
+                        300             ; Minimum TTL
+                        )
+
+; NS 记录
+@       IN      NS      ns1.{{ item.name }}.
+
+{% for record in item.records | default([]) %}
+{% if record.type == 'A' %}
+{{ record.name | default('@') }}    IN      A       {{ record.value }}
+{% elif record.type == 'CNAME' %}
+{{ record.name }}    IN      CNAME   {{ record.value }}.
+{% elif record.type == 'MX' %}
+{{ record.name | default('@') }}    IN      MX      {{ record.priority | default(10) }} {{ record.value }}.
+{% elif record.type == 'TXT' %}
+{{ record.name | default('@') }}    IN      TXT     "{{ record.value }}"
+{% endif %}
+{% endfor %}

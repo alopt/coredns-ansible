@@ -1,0 +1,72 @@
+# {{ ansible_managed }}
+# CoreDNS Configuration (v1.14.1)
+# 支持 SIGUSR1 热加载 - 经常修改的配置通过 import 导入
+# ============================================================
+
+# ============================================================
+# 导入外部配置 (支持 SIGUSR1 热加载)
+# 修改以下配置后执行: docker kill --signal=SIGUSR1 coredns
+# ============================================================
+
+# 智能解析 - View-based DNS (根据客户端 IP 返回不同结果)
+import {{ coredns_deploy_dir }}/config/zones/views.conf
+
+# 正则匹配解析 - 泛域名 (*-dev.demo.cn 等)
+import {{ coredns_deploy_dir }}/config/zones/regex.conf
+
+# 特定域名转发 (GitHub, Google 等)
+import {{ coredns_deploy_dir }}/config/zones/forward-zones.conf
+
+# 自定义区域配置
+import {{ coredns_deploy_dir }}/config/zones/*.zone
+
+# ============================================================
+# 主区块配置 - 通用 DNS 解析 (基础配置，较少修改)
+# ============================================================
+. {
+{% if coredns_hosts_entries | default([]) | length > 0 %}
+    # 自定义 hosts 解析
+    hosts {{ coredns_deploy_dir }}/config/hosts {
+        fallthrough
+    }
+
+{% endif %}
+    # 转发到上游 DNS 服务器
+    forward . {{ coredns_upstream_servers | join(' ') }} {
+        prefer_udp
+        health_check 5s
+    }
+
+    # 缓存配置
+    cache {{ coredns_cache_ttl }}
+
+    # 日志记录
+    log
+
+    # 错误日志
+    errors
+
+    # 健康检查端点
+    health :{{ coredns_health_port }}
+
+    # Prometheus 指标
+    prometheus :{{ coredns_metrics_port }}
+
+    # 循环检测
+    loop
+
+{% if coredns_reload_interval | default(false) %}
+    # 重新加载配置 (SIGUSR1 触发)
+    reload {{ coredns_reload_interval }}
+
+{% endif %}
+    # 负载均衡
+    loadbalance round_robin
+}
+
+# ============================================================
+# 健康检查专用域名
+# ============================================================
+health.check {
+    whoami
+}

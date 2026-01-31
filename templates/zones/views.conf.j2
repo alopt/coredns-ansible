@@ -1,0 +1,36 @@
+# {{ ansible_managed }}
+# View-based DNS 智能解析配置
+# 根据客户端 IP 返回不同结果
+# 支持 SIGUSR1 热加载
+
+{% if coredns_view_enabled | default(false) and coredns_view_rules | default([]) | length > 0 %}
+{% for rule in coredns_view_rules %}
+{% for view in rule.views %}
+# {{ view.name }} 视图 ({{ view.cidr }})
+{{ rule.domain }} {
+    view {{ view.name }} {
+        expr incidr(client_ip(), '{{ view.cidr }}')
+    }
+    template IN A {
+{% for ip in view.ips %}
+        answer "{% raw %}{{ .Name }}{% endraw %} {{ view.ttl | default(60) }} IN A {{ ip }}"
+{% endfor %}
+    }
+}
+
+{% endfor %}
+{% if rule.default is defined %}
+# 默认 (其他所有客户端)
+{{ rule.domain }} {
+    template IN A {
+{% for ip in rule.default.ips %}
+        answer "{% raw %}{{ .Name }}{% endraw %} {{ rule.default.ttl | default(60) }} IN A {{ ip }}"
+{% endfor %}
+    }
+}
+
+{% endif %}
+{% endfor %}
+{% else %}
+# 无视图规则配置
+{% endif %}

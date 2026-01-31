@@ -1,0 +1,14 @@
+# {{ ansible_managed }}
+{{ coredns_logs_dir }}/*.log {
+    daily
+    missingok
+    rotate {{ coredns_logrotate_days }}
+    compress
+    delaycompress
+    notifempty
+    create 0644 root root
+    sharedscripts
+    postrotate
+        docker kill --signal=USR1 coredns 2>/dev/null || true
+    endscript
+}

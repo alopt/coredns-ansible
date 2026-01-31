@@ -1,0 +1,18 @@
+# {{ ansible_managed }}
+# 特定域名转发配置
+# 支持 SIGUSR1 热加载
+
+{% if coredns_forward_zones | default([]) | length > 0 %}
+{% for zone in coredns_forward_zones %}
+# {{ zone.domains | join(', ') }}
+{{ zone.domains | join(' ') }} {
+    forward . {{ zone.upstream }}
+    cache {{ coredns_cache_ttl | default(300) }}
+    log
+    errors
+}
+
+{% endfor %}
+{% else %}
+# 无特定域名转发配置
+{% endif %}
