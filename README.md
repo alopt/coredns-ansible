@@ -204,44 +204,92 @@ CoreDNS 镜像包含 View 插件,需要从源码构建。
 
 ### 方法一: 使用 Makefile (推荐)
 
-本 Role 提供了完整的 Makefile 用于镜像构建。
+本 Role 提供了完整的 Makefile 模板用于镜像构建。
 
-#### 1. 准备构建环境
+#### 1. 使用 Ansible 部署构建文件
 
-```bash
-# 在任意节点上,确保已部署 coredns role 或复制以下文件:
-# - Dockerfile
-# - Makefile
-# - plugin.cfg
+**第一步：部署 Makefile 和构建文件**
 
-cd /root/coredns  # 或其他部署目录
-```
-
-#### 2. 修改配置 (可选)
-
-编辑 `Makefile`,调整以下变量:
-
-```makefile
-REGISTRY := your-docker-repo.demo.com:4003  # Nexus Docker 仓库地址
-IMAGE_NAME := coredns
-COREDNS_VERSION := 1.14.1
-GO_VERSION := 1.24
-```
-
-#### 3. 构建镜像
+在构建节点上执行 playbook,使用 `--tags build` 仅部署构建相关文件:
 
 ```bash
-# 查看所有可用命令
+# 部署 Dockerfile, Makefile, plugin.cfg 到构建节点
+ansible-playbook -i inventory playbook-coredns.yaml --tags build
+
+# 如果只想部署到特定主机
+ansible-playbook -i inventory playbook-coredns.yaml --tags build --limit coredns-builder
+```
+
+执行后会在目标节点生成:
+- `/root/coredns/Dockerfile` - 镜像构建文件
+- `/root/coredns/Makefile` - 构建和运维工具(根据变量自动生成)
+- `/root/coredns/plugin.cfg` - 插件配置
+
+**第二步：配置构建参数**
+
+在 playbook 或 inventory 中配置镜像仓库和版本:
+
+```yaml
+# playbook-coredns.yaml 或 group_vars
+vars:
+  # 镜像仓库配置
+  coredns_registry: "your-docker-repo.demo.com:4003"
+  coredns_image_name: "coredns"
+
+  # CoreDNS 和 Go 版本
+  coredns_build_version: "1.14.1"
+  coredns_go_version: "1.24"
+
+  # Docker 网络配置
+  coredns_network_subnet: "192.168.100.0/24"
+  coredns_network_gateway: "192.168.100.1"
+
+  # 系统 DNS 服务器
+  coredns_system_dns_servers:
+    - "192.168.0.100"
+    - "192.168.0.101"
+```
+
+部署后 Makefile 会自动使用这些变量,无需手动修改。
+
+#### 2. 构建镜像
+
+SSH 登录到构建节点:
+
+```bash
+cd /root/coredns
+
+# 查看所有可用命令和当前配置
 make help
+make info
+```
 
+输出示例:
+```
+============================================================
+CoreDNS 构建配置信息
+============================================================
+Registry:         your-docker-repo.demo.com:4003
+Image Name:       coredns
+CoreDNS Version:  1.14.1
+Go Version:       1.24
+Docker Networks:  192.168.100.0/24
+Image Tag:        your-docker-repo.demo.com:4003/coredns:1.14.1-view
+Image Tag Latest: your-docker-repo.demo.com:4003/coredns:latest
+============================================================
+```
+
+**开始构建:**
+
+```bash
 # 构建镜像
 make build
 
-# 无缓存构建
+# 无缓存构建 (当需要强制重新编译时)
 make build-no-cache
 ```
 
-#### 4. 推送到 Nexus
+#### 3. 推送到 Nexus
 
 ```bash
 # 登录 Nexus (首次)
@@ -257,7 +305,7 @@ make push-latest
 make release
 ```
 
-#### 5. 验证镜像
+#### 4. 验证镜像
 
 ```bash
 # 查看镜像信息
@@ -265,7 +313,24 @@ make info
 
 # 从 Nexus 拉取验证
 docker pull your-docker-repo.demo.com:4003/coredns:1.14.1-view
+
+# 查看镜像详情
+docker inspect your-docker-repo.demo.com:4003/coredns:1.14.1-view
 ```
+
+#### 5. 更新构建配置
+
+如果需要修改构建参数(如版本号、仓库地址):
+
+```bash
+# 方法 1: 修改 playbook 变量后重新部署 (推荐)
+ansible-playbook -i inventory playbook-coredns.yaml --tags build
+
+# 方法 2: 直接在目标节点编辑 Makefile (不推荐)
+vi /root/coredns/Makefile
+```
+
+推荐使用方法 1,通过 Ansible 统一管理配置。
 
 ### 方法二: 手动构建
 
