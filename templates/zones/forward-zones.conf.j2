@@ -16,3 +16,44 @@
 {% else %}
 # 无特定域名转发配置
 {% endif %}
+
+# ============================================================
+# AD 域控 DNS 集成配置
+# ============================================================
+{% if coredns_ad_dns_enabled | default(false) %}
+
+# AD 域名转发
+{% if coredns_ad_domains | default([]) | length > 0 %}
+# AD 域名: {{ coredns_ad_domains | join(', ') }}
+{{ coredns_ad_domains | join(' ') }} {
+    forward . {{ coredns_ad_dns_servers | join(' ') }} {
+        policy {{ coredns_ad_dns_policy | default('sequential') }}
+        health_check 10s
+        max_fails 3
+    }
+    cache 30  # AD 域名缓存时间较短，避免过期
+    log
+    errors
+}
+
+{% endif %}
+
+# AD 反向解析区域 (PTR 记录)
+{% if coredns_ad_reverse_zones | default([]) | length > 0 %}
+# AD 反向解析: {{ coredns_ad_reverse_zones | join(', ') }}
+{{ coredns_ad_reverse_zones | join(' ') }} {
+    forward . {{ coredns_ad_dns_servers | join(' ') }} {
+        policy {{ coredns_ad_dns_policy | default('sequential') }}
+        health_check 10s
+        max_fails 3
+    }
+    cache 30
+    log
+    errors
+}
+
+{% endif %}
+{% else %}
+# AD 域控 DNS 集成未启用
+# 设置 coredns_ad_dns_enabled: true 启用
+{% endif %}

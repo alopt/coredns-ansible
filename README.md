@@ -439,6 +439,16 @@ docker logs coredns
 | `coredns_reload_method` | `reload` | 重载方式 (`reload` 或 `restart`) |
 | `coredns_sync_build_files` | `false` | 是否同步构建文件 |
 
+### AD 域控 DNS 配置
+
+| 变量名 | 默认值 | 说明 |
+|--------|--------|------|
+| `coredns_ad_dns_enabled` | `false` | 是否启用 AD 域控 DNS 集成 |
+| `coredns_ad_dns_servers` | `[]` | AD 域控 DNS 服务器列表 (主/备) |
+| `coredns_ad_domains` | `[]` | AD 域名列表 (需转发给 AD DNS) |
+| `coredns_ad_reverse_zones` | `[]` | AD 反向解析区域 (PTR 记录) |
+| `coredns_ad_dns_policy` | `sequential` | DNS 转发策略 (`sequential` 或 `random`) |
+
 ### Docker 配置
 
 | 变量名 | 默认值 | 说明 |
@@ -532,6 +542,187 @@ coredns_regex_rules:
         ips:
           - "10.100.1.212"
 ```
+
+### 示例 5: AD 域控 DNS 集成 (企业最佳实践)
+
+#### 场景说明
+
+企业内网通常部署有 Windows Active Directory 域控服务器,CoreDNS 需要与 AD DNS 配合工作:
+- **AD 域名** (如 `company.local`) 转发给 AD 域控 DNS
+- **反向解析** (PTR 记录) 转发给 AD 域控
+- **其他域名** 由 CoreDNS 正常解析
+- **智能路由**: 内网客户端查询 AD 域名时使用域控 DNS,外网域名使用 CoreDNS
+
+#### 基础配置
+
+```yaml
+# 启用 AD DNS 集成
+coredns_ad_dns_enabled: true
+
+# AD 域控 DNS 服务器 (主/备)
+coredns_ad_dns_servers:
+  - "192.168.1.10"   # 主域控 DNS
+  - "192.168.1.11"   # 备域控 DNS
+
+# AD 域名列表
+coredns_ad_domains:
+  - "company.local"              # AD 主域
+  - "corp.company.local"         # AD 子域
+  - "_msdcs.company.local"       # AD 服务定位
+  - "_sites.company.local"       # AD 站点
+  - "_tcp.company.local"         # AD SRV 记录
+  - "_udp.company.local"         # AD SRV 记录
+
+# 反向解析区域 (内网网段)
+coredns_ad_reverse_zones:
+  - "1.168.192.in-addr.arpa"     # 192.168.1.0/24
+  - "2.168.192.in-addr.arpa"     # 192.168.2.0/24
+  - "10.in-addr.arpa"            # 10.0.0.0/8 (可选)
+
+# DNS 转发策略
+coredns_ad_dns_policy: "sequential"  # 顺序尝试,主域控优先
+```
+
+#### 完整配置示例
+
+```yaml
+---
+- hosts: coredns
+  vars:
+    # === CoreDNS 基础配置 ===
+    coredns_upstream_servers:
+      - 223.5.5.5      # 阿里 DNS
+      - 114.114.114.114
+
+    # === AD 域控 DNS 集成 ===
+    coredns_ad_dns_enabled: true
+    coredns_ad_dns_servers:
+      - "192.168.1.10"
+      - "192.168.1.11"
+
+    coredns_ad_domains:
+      - "company.local"
+      - "corp.company.local"
+      - "_msdcs.company.local"
+      - "_sites.company.local"
+      - "_tcp.company.local"
+      - "_udp.company.local"
+
+    coredns_ad_reverse_zones:
+      - "1.168.192.in-addr.arpa"
+      - "2.168.192.in-addr.arpa"
+
+    # === 内网 Hosts 解析 ===
+    coredns_hosts_entries:
+      - 192.168.1.10 dc01.company.local dc01
+      - 192.168.1.11 dc02.company.local dc02
+      - 192.168.1.20 fileserver.company.local
+
+    # === 特定域名转发 (GitHub, Google 等) ===
+    coredns_forward_zones:
+      - domains:
+          - github.com
+          - githubusercontent.com
+        upstream: 223.5.5.5
+
+  roles:
+    - coredns
+```
+
+#### 验证 AD DNS 集成
+
+部署后验证 AD DNS 功能:
+
+```bash
+# 1. 测试 AD 域名解析
+nslookup dc01.company.local <coredns-ip>
+nslookup company.local <coredns-ip>
+
+# 2. 测试 AD SRV 记录
+nslookup -type=SRV _ldap._tcp.company.local <coredns-ip>
+nslookup -type=SRV _kerberos._tcp.company.local <coredns-ip>
+
+# 3. 测试反向解析 (PTR)
+nslookup 192.168.1.10 <coredns-ip>
+
+# 4. 测试外网域名 (应该走上游 DNS)
+nslookup www.baidu.com <coredns-ip>
+
+# 5. 查看 CoreDNS 日志
+docker logs -f coredns | grep "company.local"
+```
+
+#### 故障排查
+
+**问题 1: AD 域名无法解析**
+
+检查 AD 域控 DNS 是否可达:
+```bash
+# 在 CoreDNS 容器内测试
+docker exec coredns nslookup company.local 192.168.1.10
+
+# 检查网络连通性
+docker exec coredns ping 192.168.1.10
+```
+
+**问题 2: SRV 记录查询失败**
+
+确保配置了所有必要的 AD 子域:
+```yaml
+coredns_ad_domains:
+  - "company.local"
+  - "_msdcs.company.local"  # 必需
+  - "_sites.company.local"  # 必需
+  - "_tcp.company.local"    # 必需
+  - "_udp.company.local"    # 必需
+```
+
+**问题 3: 反向解析不工作**
+
+确认反向区域配置正确:
+```bash
+# 192.168.1.10 的反向区域是 1.168.192.in-addr.arpa
+# 10.20.30.40 的反向区域是 30.20.10.in-addr.arpa
+```
+
+#### 高级配置: 结合视图实现智能解析
+
+针对不同客户端返回不同的 DNS 服务器:
+
+```yaml
+# 内网客户端使用 AD DNS,外网客户端使用公网 DNS
+coredns_view_enabled: true
+coredns_view_rules:
+  - domain: "company.local"
+    views:
+      # 内网客户端
+      - name: "internal"
+        cidr: "192.168.0.0/16"
+        ttl: 60
+        # 直接返回域控 IP
+        ips:
+          - "192.168.1.10"
+
+      # VPN 客户端
+      - name: "vpn"
+        cidr: "10.8.0.0/24"
+        ttl: 60
+        ips:
+          - "192.168.1.10"
+
+    # 外网客户端不返回结果
+    default:
+      ttl: 60
+      ips: []
+```
+
+#### 性能优化建议
+
+1. **缓存时间**: AD 域名使用较短缓存 (30秒),避免域控更新延迟
+2. **健康检查**: 启用域控健康检查,自动切换到备域控
+3. **策略选择**:
+   - `sequential`: 主域控优先,适合主备场景
+   - `random`: 随机选择,适合负载均衡场景
 
 ## Docker 安装
 

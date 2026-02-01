@@ -43,6 +43,34 @@ coredns_hosts_entries: []
 coredns_forward_zones: []
 
 # ============================================================
+# AD 域控 DNS 配置
+# ============================================================
+
+# 是否启用 AD 域控 DNS 集成
+coredns_ad_dns_enabled: false
+
+# AD 域控 DNS 服务器列表
+coredns_ad_dns_servers: []
+# 示例:
+#   - "192.168.1.10"  # 主域控
+#   - "192.168.1.11"  # 备域控
+
+# AD 域名列表 (需要转发给 AD DNS 的域名)
+coredns_ad_domains: []
+# 示例:
+#   - "company.local"       # AD 主域
+#   - "subdomain.company.local"  # AD 子域
+
+# AD 反向解析区域 (PTR 记录)
+coredns_ad_reverse_zones: []
+# 示例:
+#   - "1.168.192.in-addr.arpa"   # 192.168.1.0/24 网段
+#   - "10.in-addr.arpa"          # 10.0.0.0/8 网段
+
+# AD DNS 转发策略
+coredns_ad_dns_policy: "sequential"  # sequential 或 random
+
+# ============================================================
 # 视图配置 (View-based DNS - 智能解析)
 # ============================================================
 coredns_view_enabled: false

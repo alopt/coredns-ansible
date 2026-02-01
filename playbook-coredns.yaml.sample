@@ -108,3 +108,35 @@
             ttl: 60
             ips:
               - "10.100.1.212"
+
+    # ============================================================
+    # AD 域控 DNS 集成配置 (企业环境)
+    # 将 AD 域名和反向解析转发给域控 DNS 服务器
+    # ============================================================
+    # 是否启用 AD DNS 集成 (默认关闭,按需开启)
+    coredns_ad_dns_enabled: false
+
+    # # 启用 AD DNS 后的配置示例:
+    # coredns_ad_dns_enabled: true
+    #
+    # # AD 域控 DNS 服务器 (主/备)
+    # coredns_ad_dns_servers:
+    #   - "192.168.1.10"   # 主域控 DNS
+    #   - "192.168.1.11"   # 备域控 DNS
+    #
+    # # AD 域名列表 (转发给域控)
+    # coredns_ad_domains:
+    #   - "company.local"              # AD 主域
+    #   - "corp.company.local"         # AD 子域
+    #   - "_msdcs.company.local"       # AD 服务定位
+    #   - "_sites.company.local"       # AD 站点
+    #   - "_tcp.company.local"         # AD SRV 记录
+    #   - "_udp.company.local"         # AD SRV 记录
+    #
+    # # AD 反向解析区域 (PTR 记录)
+    # coredns_ad_reverse_zones:
+    #   - "1.168.192.in-addr.arpa"     # 192.168.1.0/24
+    #   - "2.168.192.in-addr.arpa"     # 192.168.2.0/24
+    #
+    # # DNS 转发策略: sequential (顺序,主域控优先) 或 random (随机,负载均衡)
+    # coredns_ad_dns_policy: "sequential"
