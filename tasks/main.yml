@@ -297,12 +297,25 @@
 - name: Deploy zone files
   template:
     src: zone.j2
-    dest: "{{ coredns_deploy_dir }}/config/zones/{{ item.name }}"
+    dest: "{{ coredns_deploy_dir }}/config/zones/{{ item.name }}.zone"
     owner: root
     group: root
     mode: '0644'
   loop: "{{ coredns_internal_zones | default([]) }}"
   when: coredns_internal_zones | default([]) | length > 0
+  notify: reload coredns
+  tags:
+    - coredns
+    - configuration
+    - config
+
+- name: Deploy internal-zones.conf (Zone 文件加载配置)
+  template:
+    src: zones/internal-zones.conf.j2
+    dest: "{{ coredns_deploy_dir }}/config/zones/internal-zones.conf"
+    owner: root
+    group: root
+    mode: '0644'
   notify: reload coredns
   tags:
     - coredns

@@ -94,17 +94,17 @@
     # 使用 Go 正则表达式语法
     # ============================================================
     coredns_regex_rules:
-      - zone: "demo.cn"
+      - zone: "internal.demo.cn"
         rules:
-          # 匹配 *-dev.demo.cn (如 an-dev, ac-dev, test-dev)
+          # 匹配 *-dev.internal.demo.cn (如 an-dev, ac-dev, test-dev)
           - pattern: "^[a-zA-Z0-9]+-dev[.]demo[.]cn[.]$"
-            comment: "泛域名 *-dev.demo.cn 解析到开发环境"
+            comment: "泛域名 *-dev.internal.demo.cn 解析到开发环境"
             ttl: 60
             ips:
               - "10.21.70.81"
-          # 匹配 *-ops.demo.cn (如 git-ops, jenkins-ops)
+          # 匹配 *-ops.internal.demo.cn (如 git-ops, jenkins-ops)
           - pattern: "^[a-zA-Z0-9]+-ops[.]demo[.]cn[.]$"
-            comment: "泛域名 *-ops.demo.cn 解析到生产环境"
+            comment: "泛域名 *-ops.internal.demo.cn 解析到生产环境"
             ttl: 60
             ips:
               - "10.100.1.212"
@@ -140,3 +140,213 @@
     #
     # # DNS 转发策略: sequential (顺序,主域控优先) 或 random (随机,负载均衡)
     # coredns_ad_dns_policy: "sequential"
+
+    # ============================================================
+    # 内部 Zone 配置 - 完整 DNS 记录支持
+    # 支持: A, AAAA, CNAME, MX, TXT, SRV, NS, PTR, CAA
+    # ============================================================
+    coredns_internal_zones:
+      # ============================================================
+      # 示例: 内部域名 internal.demo.cn
+      # 注意: 正则规则 (coredns_regex_rules) 会自动合并到此 zone
+      # ============================================================
+      - name: "internal.demo.cn"
+        default_ttl: 3600
+        primary_ns: "ns1.internal.demo.cn"
+        admin_email: "admin.internal.demo.cn"
+        records:
+          # ============================================================
+          # A 记录 - IPv4 地址映射 (推荐 TTL: 60 秒)
+          # ============================================================
+          - type: "A"
+            name: "@"
+            value: "192.168.1.10"
+            ttl: 60
+            comment: "根域名"
+          - type: "A"
+            name: "www"
+            value: "192.168.1.10"
+            ttl: 60
+          - type: "A"
+            name: "ns1"
+            value: "192.168.1.1"
+            ttl: 60
+          - type: "A"
+            name: "ns2"
+            value: "192.168.1.2"
+            ttl: 60
+          - type: "A"
+            name: "web"
+            value: "192.168.1.20"
+            ttl: 60
+          - type: "A"
+            name: "api"
+            value: "192.168.1.21"
+            ttl: 60
+          - type: "A"
+            name: "db"
+            value: "192.168.1.30"
+            ttl: 60
+          - type: "A"
+            name: "redis"
+            value: "192.168.1.31"
+            ttl: 60
+
+          # ============================================================
+          # AAAA 记录 - IPv6 地址映射 (推荐 TTL: 60 秒)
+          # ============================================================
+          - type: "AAAA"
+            name: "@"
+            value: "2001:db8::10"
+            ttl: 60
+          - type: "AAAA"
+            name: "www"
+            value: "2001:db8::10"
+            ttl: 60
+          - type: "AAAA"
+            name: "ipv6"
+            value: "2001:db8::100"
+            ttl: 60
+
+          # ============================================================
+          # CNAME 记录 - 别名 (推荐 TTL: 1200 秒 / 20分钟)
+          # ============================================================
+          - type: "CNAME"
+            name: "mail"
+            value: "mx1.internal.demo.cn"
+            ttl: 1200
+          - type: "CNAME"
+            name: "ftp"
+            value: "web.internal.demo.cn"
+            ttl: 1200
+          - type: "CNAME"
+            name: "cdn"
+            value: "web.internal.demo.cn"
+            ttl: 1200
+          - type: "CNAME"
+            name: "portal"
+            value: "www.internal.demo.cn"
+            ttl: 1200
+
+          # ============================================================
+          # MX 记录 - 邮件服务器 (推荐 TTL: 3600 秒 / 1小时)
+          # ============================================================
+          - type: "MX"
+            name: "@"
+            value: "mx1.internal.demo.cn"
+            priority: 10
+            ttl: 3600
+            comment: "主邮件服务器"
+          - type: "MX"
+            name: "@"
+            value: "mx2.internal.demo.cn"
+            priority: 20
+            ttl: 3600
+            comment: "备邮件服务器"
+          - type: "A"
+            name: "mx1"
+            value: "192.168.1.50"
+            ttl: 60
+          - type: "A"
+            name: "mx2"
+            value: "192.168.1.51"
+            ttl: 60
+
+          # ============================================================
+          # TXT 记录 - 文本记录 (推荐 TTL: 1800 秒 / 30分钟)
+          # 用途: SPF, DKIM, DMARC, 域名验证等
+          # ============================================================
+          # SPF 记录 - 发件人策略框架
+          - type: "TXT"
+            name: "@"
+            value: "v=spf1 mx ip4:192.168.1.0/24 ~all"
+            ttl: 1800
+            comment: "SPF 记录"
+          # DMARC 记录
+          - type: "TXT"
+            name: "_dmarc"
+            value: "v=DMARC1; p=quarantine; rua=mailto:dmarc@internal.demo.cn"
+            ttl: 1800
+            comment: "DMARC 记录"
+          # 域名验证
+          - type: "TXT"
+            name: "@"
+            value: "google-site-verification=xxxxxxxxxx"
+            ttl: 1800
+            comment: "Google 域名验证"
+          # 自定义文本
+          - type: "TXT"
+            name: "info"
+            value: "This is internal domain"
+            ttl: 1800
+
+          # ============================================================
+          # SRV 记录 - 服务定位 (推荐 TTL: 300 秒 / 5分钟)
+          # 格式: _service._proto.name TTL IN SRV priority weight port target
+          # ============================================================
+          # LDAP 服务
+          - type: "SRV"
+            name: "_ldap._tcp"
+            value: "ldap.internal.demo.cn"
+            port: 389
+            priority: 0
+            weight: 100
+            ttl: 300
+            comment: "LDAP 服务"
+          # Kerberos 服务
+          - type: "SRV"
+            name: "_kerberos._tcp"
+            value: "kdc.internal.demo.cn"
+            port: 88
+            priority: 0
+            weight: 100
+            ttl: 300
+          # XMPP 服务
+          - type: "SRV"
+            name: "_xmpp-server._tcp"
+            value: "xmpp.internal.demo.cn"
+            port: 5269
+            priority: 0
+            weight: 100
+            ttl: 300
+
+          # ============================================================
+          # CAA 记录 - 证书授权 (推荐 TTL: 3600 秒)
+          # ============================================================
+          - type: "CAA"
+            name: "@"
+            flags: 0
+            tag: "issue"
+            value: "letsencrypt.org"
+            ttl: 3600
+            comment: "只允许 Let's Encrypt 颁发证书"
+          - type: "CAA"
+            name: "@"
+            flags: 0
+            tag: "iodef"
+            value: "mailto:security@internal.demo.cn"
+            ttl: 3600
+            comment: "证书问题通知邮箱"
+
+      # 示例: 反向解析区域
+      - name: "1.168.192.in-addr.arpa"
+        default_ttl: 3600
+        records:
+          # PTR 记录 - 反向解析
+          - type: "PTR"
+            name: "10"
+            value: "www.internal.demo.cn"
+            ttl: 3600
+          - type: "PTR"
+            name: "20"
+            value: "web.internal.demo.cn"
+            ttl: 3600
+          - type: "PTR"
+            name: "30"
+            value: "db.internal.demo.cn"
+            ttl: 3600
+          - type: "PTR"
+            name: "50"
+            value: "mx1.internal.demo.cn"
+            ttl: 3600
+

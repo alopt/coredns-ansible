@@ -1,0 +1,56 @@
+# {{ ansible_managed }}
+# 内部 Zone 配置 - 使用 file 插件加载 zone 文件
+# 支持 SIGUSR1 热加载
+# 注意: 如果同一域名在 coredns_regex_rules 中也有定义，正则规则会合并到此处
+
+{% if coredns_internal_zones | default([]) | length > 0 %}
+{% for zone in coredns_internal_zones %}
+{# 查找该 zone 是否在 regex_rules 中也有定义 #}
+{% set zone_regex_rules = [] %}
+{% for regex_zone in coredns_regex_rules | default([]) %}
+{% if regex_zone.zone == zone.name %}
+{% set _ = zone_regex_rules.extend(regex_zone.rules) %}
+{% endif %}
+{% endfor %}
+
+# Zone: {{ zone.name }}
+{{ zone.name }} {
+{% if coredns_hosts_entries | default([]) | length > 0 %}
+    # hosts 优先 (fallthrough 到 file/template)
+    hosts {{ coredns_deploy_dir }}/config/hosts {
+        fallthrough
+    }
+{% endif %}
+
+    # Zone 文件 (A, AAAA, CNAME, MX, TXT, SRV 等记录)
+    file {{ coredns_deploy_dir }}/config/zones/{{ zone.name }}.zone
+
+{% if zone_regex_rules | length > 0 %}
+    # 正则匹配规则 (泛域名，从 coredns_regex_rules 合并)
+{% for rule in zone_regex_rules %}
+    template IN A {
+        # {{ rule.comment | default('正则匹配规则') }}
+        match {{ rule.pattern }}
+{% for ip in rule.ips %}
+        answer "{% raw %}{{ .Name }}{% endraw %} {{ rule.ttl | default(60) }} IN A {{ ip }}"
+{% endfor %}
+        fallthrough
+    }
+{% endfor %}
+{% endif %}
+
+    log
+    errors
+{% if zone.transfer_to is defined %}
+    # Zone 传输
+    transfer {
+        to {{ zone.transfer_to | join(' ') }}
+    }
+{% endif %}
+}
+
+{% endfor %}
+{% else %}
+# 无内部 Zone 配置
+# 在 coredns_internal_zones 中添加 zone 配置
+{% endif %}

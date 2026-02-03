@@ -449,6 +449,31 @@ docker logs coredns
 | `coredns_ad_reverse_zones` | `[]` | AD 反向解析区域 (PTR 记录) |
 | `coredns_ad_dns_policy` | `sequential` | DNS 转发策略 (`sequential` 或 `random`) |
 
+### 内部 Zone 配置 (完整 DNS 记录)
+
+| 变量名 | 默认值 | 说明 |
+|--------|--------|------|
+| `coredns_internal_zones` | `[]` | 内部 Zone 配置列表 |
+| `coredns_internal_zones[].name` | - | Zone 名称 (如 `example.com`) |
+| `coredns_internal_zones[].default_ttl` | `3600` | 默认 TTL (秒) |
+| `coredns_internal_zones[].records` | `[]` | DNS 记录列表 |
+| `records[].type` | - | 记录类型: A/AAAA/CNAME/MX/TXT/SRV/NS/PTR/CAA |
+| `records[].name` | `@` | 记录名称 |
+| `records[].value` | - | 记录值 |
+| `records[].ttl` | 见下表 | 记录 TTL (秒) |
+
+**各记录类型推荐 TTL:**
+
+| 记录类型 | 推荐 TTL | 说明 |
+|----------|----------|------|
+| A | 60 | 快速切换 IP |
+| AAAA | 60 | 快速切换 IPv6 |
+| CNAME | 1200 | 别名较稳定 |
+| MX | 3600 | 邮件服务器 |
+| TXT | 1800 | SPF/DKIM 等 |
+| SRV | 300 | 服务定位 |
+| NS | 3600-86400 | 名称服务器 |
+
 ### Docker 配置
 
 | 变量名 | 默认值 | 说明 |
@@ -723,6 +748,153 @@ coredns_view_rules:
 3. **策略选择**:
    - `sequential`: 主域控优先,适合主备场景
    - `random`: 随机选择,适合负载均衡场景
+
+### 示例 6: 内部 Zone 配置 (完整 DNS 记录)
+
+使用 `coredns_internal_zones` 配置完整的 DNS Zone 文件,支持所有标准 DNS 记录类型。
+
+#### 支持的记录类型和推荐 TTL
+
+| 记录类型 | 推荐 TTL | 用途 |
+|----------|----------|------|
+| A | 60 秒 | IPv4 地址映射 |
+| AAAA | 60 秒 | IPv6 地址映射 |
+| CNAME | 1200 秒 (20分钟) | 域名别名 |
+| MX | 3600 秒 (1小时) | 邮件服务器 |
+| TXT | 1800 秒 (30分钟) | SPF/DKIM/验证 |
+| SRV | 300 秒 (5分钟) | 服务定位 |
+| NS | 3600-86400 秒 | 名称服务器 |
+| PTR | 3600 秒 | 反向解析 |
+| CAA | 3600 秒 | 证书授权 |
+
+#### 基础配置示例
+
+```yaml
+coredns_internal_zones:
+  - name: "internal.example.com"
+    default_ttl: 3600
+    primary_ns: "ns1.internal.example.com"
+    admin_email: "admin.internal.example.com"
+    records:
+      # A 记录 - TTL 60秒
+      - type: "A"
+        name: "@"
+        value: "192.168.1.10"
+        ttl: 60
+      - type: "A"
+        name: "www"
+        value: "192.168.1.10"
+        ttl: 60
+
+      # AAAA 记录 - TTL 60秒
+      - type: "AAAA"
+        name: "@"
+        value: "2001:db8::10"
+        ttl: 60
+
+      # CNAME 记录 - TTL 1200秒
+      - type: "CNAME"
+        name: "mail"
+        value: "mx1.internal.example.com"
+        ttl: 1200
+      - type: "CNAME"
+        name: "ftp"
+        value: "www.internal.example.com"
+        ttl: 1200
+
+      # MX 记录 - TTL 3600秒
+      - type: "MX"
+        name: "@"
+        value: "mx1.internal.example.com"
+        priority: 10
+        ttl: 3600
+      - type: "MX"
+        name: "@"
+        value: "mx2.internal.example.com"
+        priority: 20
+        ttl: 3600
+
+      # TXT 记录 - TTL 1800秒
+      - type: "TXT"
+        name: "@"
+        value: "v=spf1 mx ip4:192.168.1.0/24 ~all"
+        ttl: 1800
+        comment: "SPF 记录"
+      - type: "TXT"
+        name: "_dmarc"
+        value: "v=DMARC1; p=quarantine; rua=mailto:dmarc@example.com"
+        ttl: 1800
+
+      # SRV 记录 - TTL 300秒
+      - type: "SRV"
+        name: "_ldap._tcp"
+        value: "ldap.internal.example.com"
+        port: 389
+        priority: 0
+        weight: 100
+        ttl: 300
+
+      # CAA 记录 - TTL 3600秒
+      - type: "CAA"
+        name: "@"
+        flags: 0
+        tag: "issue"
+        value: "letsencrypt.org"
+        ttl: 3600
+```
+
+#### 反向解析区域配置
+
+```yaml
+coredns_internal_zones:
+  # 正向解析
+  - name: "internal.example.com"
+    records:
+      - type: "A"
+        name: "server1"
+        value: "192.168.1.10"
+        ttl: 60
+
+  # 反向解析 192.168.1.0/24
+  - name: "1.168.192.in-addr.arpa"
+    default_ttl: 3600
+    records:
+      - type: "PTR"
+        name: "10"
+        value: "server1.internal.example.com"
+        ttl: 3600
+      - type: "PTR"
+        name: "20"
+        value: "server2.internal.example.com"
+        ttl: 3600
+```
+
+#### 验证配置
+
+部署后验证各类记录:
+
+```bash
+# A 记录
+nslookup www.internal.example.com <coredns-ip>
+
+# AAAA 记录
+nslookup -type=AAAA internal.example.com <coredns-ip>
+
+# CNAME 记录
+nslookup -type=CNAME mail.internal.example.com <coredns-ip>
+
+# MX 记录
+nslookup -type=MX internal.example.com <coredns-ip>
+
+# TXT 记录
+nslookup -type=TXT internal.example.com <coredns-ip>
+
+# SRV 记录
+nslookup -type=SRV _ldap._tcp.internal.example.com <coredns-ip>
+
+# PTR 记录
+nslookup 192.168.1.10 <coredns-ip>
+```
 
 ## Docker 安装
 

@@ -17,8 +17,8 @@ import {{ coredns_deploy_dir }}/config/zones/regex.conf
 # 特定域名转发 (GitHub, Google 等)
 import {{ coredns_deploy_dir }}/config/zones/forward-zones.conf
 
-# 自定义区域配置
-import {{ coredns_deploy_dir }}/config/zones/*.zone
+# 内部 Zone 配置 (A, AAAA, CNAME, MX, TXT, SRV 等记录)
+import {{ coredns_deploy_dir }}/config/zones/internal-zones.conf
 
 # ============================================================
 # 主区块配置 - 通用 DNS 解析 (基础配置，较少修改)

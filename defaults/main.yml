@@ -82,6 +82,38 @@ coredns_view_rules: []
 coredns_regex_rules: []
 
 # ============================================================
+# 内部 Zone 配置 (完整 DNS 记录支持)
+# 支持: A, AAAA, CNAME, MX, TXT, SRV, NS, PTR, CAA
+# ============================================================
+coredns_internal_zones: []
+# 示例:
+#   - name: "example.com"
+#     default_ttl: 3600
+#     records:
+#       # A 记录 - IPv4 地址
+#       - { type: "A", name: "@", value: "192.168.1.10", ttl: 60 }
+#       - { type: "A", name: "www", value: "192.168.1.10", ttl: 60 }
+#       # AAAA 记录 - IPv6 地址
+#       - { type: "AAAA", name: "@", value: "2001:db8::1", ttl: 60 }
+#       # CNAME 记录 - 别名
+#       - { type: "CNAME", name: "mail", value: "mx1.example.com", ttl: 1200 }
+#       # MX 记录 - 邮件服务器
+#       - { type: "MX", name: "@", value: "mx1.example.com", priority: 10, ttl: 3600 }
+#       # TXT 记录 - SPF/DKIM/验证
+#       - { type: "TXT", name: "@", value: "v=spf1 mx ~all", ttl: 1800 }
+#       # SRV 记录 - 服务定位
+#       - { type: "SRV", name: "_ldap._tcp", value: "ldap.example.com", port: 389, priority: 0, weight: 100, ttl: 300 }
+
+# 各记录类型推荐 TTL 值:
+#   A 记录:     60-300 秒 (快速切换)
+#   AAAA 记录:  60-300 秒
+#   CNAME 记录: 1200 秒 (20分钟)
+#   MX 记录:    3600 秒 (1小时)
+#   TXT 记录:   1800 秒 (30分钟)
+#   SRV 记录:   300 秒 (5分钟)
+#   NS 记录:    3600-86400 秒
+
+# ============================================================
 # 部署选项
 # ============================================================
 

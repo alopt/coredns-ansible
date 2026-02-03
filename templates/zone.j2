@@ -1,28 +1,61 @@
 ; {{ ansible_managed }}
 ; Zone file for {{ item.name }}
+; 支持的记录类型: A, AAAA, CNAME, MX, TXT, NS, SRV, PTR, CAA
 
 $ORIGIN {{ item.name }}.
-$TTL 3600
+$TTL {{ item.default_ttl | default(3600) }}
 
-@       IN      SOA     ns1.{{ item.name }}. admin.{{ item.name }}. (
-                        {{ ansible_date_time.epoch }}  ; Serial
-                        3600            ; Refresh
-                        600             ; Retry
-                        86400           ; Expire
-                        300             ; Minimum TTL
+; SOA 记录
+@       IN      SOA     {{ item.primary_ns | default('ns1.' ~ item.name) }}. {{ item.admin_email | default('admin.' ~ item.name) }}. (
+                        {{ ansible_date_time.epoch }}  ; Serial (自动生成)
+                        {{ item.soa_refresh | default(3600) }}     ; Refresh
+                        {{ item.soa_retry | default(600) }}        ; Retry
+                        {{ item.soa_expire | default(86400) }}     ; Expire
+                        {{ item.soa_minimum | default(300) }}      ; Minimum TTL
                         )
 
 ; NS 记录
+{% if item.ns_records is defined %}
+{% for ns in item.ns_records %}
+{{ ns.name | default('@') }}    {{ ns.ttl | default('') }}    IN      NS      {{ ns.value }}.
+{% endfor %}
+{% else %}
 @       IN      NS      ns1.{{ item.name }}.
+{% endif %}
 
+; ============================================================
+; DNS 记录
+; ============================================================
 {% for record in item.records | default([]) %}
 {% if record.type == 'A' %}
-{{ record.name | default('@') }}    IN      A       {{ record.value }}
+; A 记录 - IPv4 地址
+{{ "%-20s" | format(record.name | default('@')) }} {{ "%-8s" | format(record.ttl | default('60')) }}    IN      A       {{ record.value }}
+{% elif record.type == 'AAAA' %}
+; AAAA 记录 - IPv6 地址
+{{ "%-20s" | format(record.name | default('@')) }} {{ "%-8s" | format(record.ttl | default('60')) }}    IN      AAAA    {{ record.value }}
 {% elif record.type == 'CNAME' %}
-{{ record.name }}    IN      CNAME   {{ record.value }}.
+; CNAME 记录 - 别名
+{{ "%-20s" | format(record.name) }} {{ "%-8s" | format(record.ttl | default('1200')) }}    IN      CNAME   {{ record.value }}.
 {% elif record.type == 'MX' %}
-{{ record.name | default('@') }}    IN      MX      {{ record.priority | default(10) }} {{ record.value }}.
+; MX 记录 - 邮件交换
+{{ "%-20s" | format(record.name | default('@')) }} {{ "%-8s" | format(record.ttl | default('3600')) }}    IN      MX      {{ record.priority | default(10) }} {{ record.value }}.
 {% elif record.type == 'TXT' %}
-{{ record.name | default('@') }}    IN      TXT     "{{ record.value }}"
+; TXT 记录 - 文本记录 (SPF, DKIM, DMARC 等)
+{{ "%-20s" | format(record.name | default('@')) }} {{ "%-8s" | format(record.ttl | default('1800')) }}    IN      TXT     "{{ record.value }}"
+{% elif record.type == 'SRV' %}
+; SRV 记录 - 服务定位
+{{ "%-20s" | format(record.name) }} {{ "%-8s" | format(record.ttl | default('300')) }}    IN      SRV     {{ record.priority | default(0) }} {{ record.weight | default(0) }} {{ record.port }} {{ record.value }}.
+{% elif record.type == 'PTR' %}
+; PTR 记录 - 反向解析
+{{ "%-20s" | format(record.name) }} {{ "%-8s" | format(record.ttl | default('3600')) }}    IN      PTR     {{ record.value }}.
+{% elif record.type == 'CAA' %}
+; CAA 记录 - 证书授权
+{{ "%-20s" | format(record.name | default('@')) }} {{ "%-8s" | format(record.ttl | default('3600')) }}    IN      CAA     {{ record.flags | default(0) }} {{ record.tag }} "{{ record.value }}"
+{% elif record.type == 'NS' %}
+; NS 记录 - 名称服务器
+{{ "%-20s" | format(record.name | default('@')) }} {{ "%-8s" | format(record.ttl | default('3600')) }}    IN      NS      {{ record.value }}.
+{% endif %}
+{% if record.comment is defined %}
+; {{ record.comment }}
 {% endif %}
 {% endfor %}

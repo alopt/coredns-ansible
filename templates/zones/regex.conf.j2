@@ -2,9 +2,14 @@
 # 正则匹配解析 - 泛域名配置
 # 使用 Go 正则表达式语法
 # 支持 SIGUSR1 热加载
+# 注意: 如果域名在 coredns_internal_zones 中也有定义，规则会合并到 internal-zones.conf
+
+{# 获取所有 internal_zones 的域名列表 #}
+{% set internal_zone_names = coredns_internal_zones | default([]) | map(attribute='name') | list %}
 
 {% if coredns_regex_rules | default([]) | length > 0 %}
 {% for zone_rule in coredns_regex_rules %}
+{% if zone_rule.zone not in internal_zone_names %}
 # 正则匹配: {{ zone_rule.zone }}
 {{ zone_rule.zone }} {
 {% if coredns_hosts_entries | default([]) | length > 0 %}
@@ -23,8 +28,13 @@
         fallthrough
     }
 {% endfor %}
+    log
+    errors
 }
 
+{% else %}
+# 跳过 {{ zone_rule.zone }} - 已在 coredns_internal_zones 中定义，规则已合并到 internal-zones.conf
+{% endif %}
 {% endfor %}
 {% else %}
 # 无正则匹配规则配置
