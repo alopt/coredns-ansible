@@ -180,10 +180,15 @@ coredns_build_version: "1.14.1"
 coredns_go_version: "1.24"
 
 # ============================================================
-# Docker 网络配置
+# Docker 网络模式配置
 # ============================================================
 
-# Docker Compose 网络配置 (需要与 Makefile 中的 iptables 规则一致)
+# 网络模式: 默认使用 Host 模式
+# 当未配置 coredns_view_rules 且 coredns_network_bridge 为 true 时, 使用 Bridge 模式
+# 当配置了 coredns_view_rules 时, 强制使用 Host 模式 (view 需要获取客户端真实 IP)
+coredns_network_bridge: false
+
+# Bridge 模式下的 Docker 网络配置 (仅 coredns_network_bridge: true 时生效)
 coredns_network_subnet: "192.168.100.0/24"
 coredns_network_gateway: "192.168.100.1"
 

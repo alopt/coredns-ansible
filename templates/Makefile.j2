@@ -7,7 +7,9 @@ REGISTRY := {{ coredns_registry }}
 IMAGE_NAME := {{ coredns_image_name }}
 COREDNS_VERSION := {{ coredns_build_version }}
 GO_VERSION := {{ coredns_go_version }}
+{% if (coredns_view_rules is not defined or coredns_view_rules | length == 0) and (coredns_network_bridge | default(false)) %}
 DOCKER_NETWORKS := {{ coredns_network_subnet }}
+{% endif %}
 
 {% raw %}
 # 完整镜像标签
@@ -47,7 +49,13 @@ help:
 	@echo "  reload         重载配置 (不重启容器)"
 	@echo "  logs           查看日志"
 	@echo "  status         查看状态"
+{% endraw %}
+{% if (coredns_view_rules is not defined or coredns_view_rules | length == 0) and (coredns_network_bridge | default(false)) %}
 	@echo "  init-system    手动初始化系统 (禁用 systemd-resolved, 配置转发)"
+{% else %}
+	@echo "  init-system    手动初始化系统 (禁用 systemd-resolved, 配置 DNS)"
+{% endif %}
+{% raw %}
 	@echo "  reinit-system  强制重新初始化系统"
 	@echo ""
 	@echo "测试目标:"
@@ -124,18 +132,19 @@ init-system:
 		systemctl disable systemd-resolved || true; \
 		echo ">>> 配置 /etc/resolv.conf"; \
 		rm -f /etc/resolv.conf; \
-{% endraw %}
-{% for dns_server in coredns_system_dns_servers %}
+{% endraw %}{%- for dns_server in coredns_system_dns_servers %}
 		echo "nameserver {{ dns_server }}" >> /etc/resolv.conf; \
-{% endfor %}
-{% raw %}
-		echo ">>> 启用 IP 转发"; \
+{%- endfor %}
+{%- if (coredns_view_rules is not defined or coredns_view_rules | length == 0) and (coredns_network_bridge | default(false)) %}
+{% raw %}		echo ">>> 启用 IP 转发"; \
 		grep -q "net.ipv4.ip_forward=1" /etc/sysctl.conf || echo "net.ipv4.ip_forward=1" >> /etc/sysctl.conf; \
 		sysctl -p; \
 		echo ">>> 配置 iptables NAT"; \
 		iptables -t nat -C POSTROUTING -s $(DOCKER_NETWORKS) -o eth0 -j MASQUERADE 2>/dev/null || \
 			iptables -t nat -A POSTROUTING -s $(DOCKER_NETWORKS) -o eth0 -j MASQUERADE; \
-		echo ">>> 创建初始化标记"; \
+{% endraw %}
+{%- endif %}
+{% raw %}		echo ">>> 创建初始化标记"; \
 		mkdir -p /var/lib/coredns; \
 		touch $(INIT_FLAG); \
 		echo ">>> 系统初始化完成"; \
@@ -234,7 +243,14 @@ info:
 	@echo "Image Name:       $(IMAGE_NAME)"
 	@echo "CoreDNS Version:  $(COREDNS_VERSION)"
 	@echo "Go Version:       $(GO_VERSION)"
+{% endraw %}
+{% if (coredns_view_rules is not defined or coredns_view_rules | length == 0) and (coredns_network_bridge | default(false)) %}
+	@echo "Network Mode:     bridge"
 	@echo "Docker Networks:  $(DOCKER_NETWORKS)"
+{% else %}
+	@echo "Network Mode:     host"
+{% endif %}
+{% raw %}
 	@echo "Image Tag:        $(IMAGE_TAG)"
 	@echo "Image Tag Latest: $(IMAGE_TAG_LATEST)"
 	@echo "============================================================"

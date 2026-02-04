@@ -367,6 +367,38 @@
     - coredns
     - docker
 
+- name: Check if system is initialized
+  stat:
+    path: /var/lib/coredns/.initialized
+  register: coredns_init_flag
+  tags:
+    - coredns
+    - docker
+    - init
+
+- name: Run make init-system (first time setup)
+  shell: |
+    cd {{ coredns_deploy_dir }}
+    make init-system
+  register: init_system_result
+  when: not coredns_init_flag.stat.exists
+  tags:
+    - coredns
+    - docker
+    - init
+
+- name: Display init-system result
+  debug:
+    msg: "{{ init_system_result.stdout_lines }}"
+  when:
+    - not coredns_init_flag.stat.exists
+    - init_system_result is defined
+    - init_system_result.stdout_lines is defined
+  tags:
+    - coredns
+    - docker
+    - init
+
 - name: Start CoreDNS with docker-compose
   shell: |
     cd {{ coredns_deploy_dir }}

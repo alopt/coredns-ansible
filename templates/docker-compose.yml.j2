@@ -8,13 +8,8 @@ services:
     container_name: coredns
     restart: always
     user: root
-    volumes:
-      # 挂载整个目录，支持 import 和 SIGUSR1 热加载
-      - {{ coredns_deploy_dir }}/config:{{ coredns_deploy_dir }}/config:ro
-      - {{ coredns_logs_dir }}:/var/log/coredns
-    command: -conf {{ coredns_deploy_dir }}/config/Corefile
-    environment:
-      TZ: Asia/Shanghai
+{% if (coredns_view_rules is not defined or coredns_view_rules | length == 0) and (coredns_network_bridge | default(false)) %}
+    # Bridge 网络模式: 未使用 view 插件, 通过端口映射对外提供服务
     ports:
       - "{{ coredns_dns_port }}:53/udp"
       - "{{ coredns_dns_port }}:53/tcp"
@@ -22,6 +17,18 @@ services:
       - "{{ coredns_health_port }}:8080"
     networks:
       - coredns-net
+{% else %}
+    # Host 网络模式: 使用 view 插件时必须使用 Host 模式,
+    # 因为 view 基于客户端真实 IP 判断, Bridge 模式下所有请求源 IP 均为网关 IP, 无法区分客户端
+    network_mode: host
+{% endif %}
+    volumes:
+      # 挂载整个目录，支持 import 和 SIGUSR1 热加载
+      - {{ coredns_deploy_dir }}/config:{{ coredns_deploy_dir }}/config:ro
+      - {{ coredns_logs_dir }}:/var/log/coredns
+    command: -conf {{ coredns_deploy_dir }}/config/Corefile
+    environment:
+      TZ: Asia/Shanghai
     healthcheck:
       test: ["CMD", "nslookup", "health.check", "127.0.0.1"]
       interval: 30s
@@ -33,6 +40,7 @@ services:
       options:
         max-size: "50m"
         max-file: "3"
+{% if (coredns_view_rules is not defined or coredns_view_rules | length == 0) and (coredns_network_bridge | default(false)) %}
 
 networks:
   coredns-net:
@@ -41,3 +49,4 @@ networks:
       config:
         - subnet: {{ coredns_network_subnet }} # 网段必须在 Makefile 中定义并配置 iptables 转发
           gateway: {{ coredns_network_gateway }}
+{% endif %}

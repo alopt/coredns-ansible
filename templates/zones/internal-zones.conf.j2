@@ -23,7 +23,9 @@
 {% endif %}
 
     # Zone 文件 (A, AAAA, CNAME, MX, TXT, SRV 等记录)
-    file {{ coredns_deploy_dir }}/config/zones/{{ zone.name }}.zone
+    file {{ coredns_deploy_dir }}/config/zones/{{ zone.name }}.zone {
+        fallthrough
+    }
 
 {% if zone_regex_rules | length > 0 %}
     # 正则匹配规则 (泛域名，从 coredns_regex_rules 合并)

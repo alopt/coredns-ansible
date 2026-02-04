@@ -350,3 +350,11 @@
             value: "mx1.internal.demo.cn"
             ttl: 3600
 
+      # 指定唯一的反向解析名称，避免和正向解析区域重复（解决：每次 ping 的 ICMP 回复行显示的域名都不一样）
+      - name: "1.100.10.in-addr.arpa"
+        default_ttl: 3600
+        records:
+          - type: "PTR"
+            name: "212"
+            value: "ubuntu22-gitserver"
+            ttl: 3600

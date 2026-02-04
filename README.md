@@ -17,7 +17,7 @@
 
 ## 功能特性
 
-- **智能解析 (View-based DNS)**: 基于客户端 IP 地址返回不同的解析结果
+- **智能解析 (View-based DNS)**: 基于客户端 IP 地址返回不同的解析结果 (需使用 Host 网络模式)
 - **正则匹配**: 支持泛域名解析 (如 `*-dev.internal.demo.cn`)
 - **域名转发**: 特定域名使用指定的上游 DNS 服务器
 - **Hosts 文件**: 静态域名解析
@@ -240,10 +240,6 @@ vars:
   coredns_build_version: "1.14.1"
   coredns_go_version: "1.24"
 
-  # Docker 网络配置
-  coredns_network_subnet: "192.168.100.0/24"
-  coredns_network_gateway: "192.168.100.1"
-
   # 系统 DNS 服务器
   coredns_system_dns_servers:
     - "192.168.0.100"
@@ -273,7 +269,7 @@ Registry:         your-docker-repo.demo.com:4003
 Image Name:       coredns
 CoreDNS Version:  1.14.1
 Go Version:       1.24
-Docker Networks:  192.168.100.0/24
+Network Mode:     host
 Image Tag:        your-docker-repo.demo.com:4003/coredns:1.14.1-view
 Image Tag Latest: your-docker-repo.demo.com:4003/coredns:latest
 ============================================================
@@ -438,6 +434,9 @@ docker logs coredns
 | `coredns_validate_config` | `true` | 是否验证配置 |
 | `coredns_reload_method` | `reload` | 重载方式 (`reload` 或 `restart`) |
 | `coredns_sync_build_files` | `false` | 是否同步构建文件 |
+| `coredns_network_bridge` | `false` | 是否使用 Bridge 网络模式 (仅在未配置 `coredns_view_rules` 时生效) |
+| `coredns_network_subnet` | `192.168.100.0/24` | Bridge 模式下 Docker 网络子网 |
+| `coredns_network_gateway` | `192.168.100.1` | Bridge 模式下 Docker 网络网关 |
 
 ### AD 域控 DNS 配置
 
@@ -947,6 +946,49 @@ ansible-playbook -i inventory playbook-coredns.yaml --tags docker-install
 
 ## 高级配置
 
+### Docker 网络模式说明
+
+CoreDNS 容器支持两种 Docker 网络模式，通过变量自动选择：
+
+| 条件 | 网络模式 | 说明 |
+|------|----------|------|
+| 配置了 `coredns_view_rules` | **Host** (强制) | View 需要客户端真实 IP;<br/>也可以尝试使用Macvlan或禁用 Docker Userland Proxy</br> |
+| 未配置 `coredns_view_rules` 且 `coredns_network_bridge: true` | **Bridge** | 通过端口映射提供服务 |
+| 未配置 `coredns_view_rules` 且 `coredns_network_bridge: false` (默认) | **Host** | 默认行为 |
+
+#### Host 网络模式 (默认 / 使用 View 时强制)
+
+当配置了 `coredns_view_rules` 时，无论 `coredns_network_bridge` 如何设置，**都会强制使用 Host 网络模式**。原因如下：
+
+- View 插件基于客户端的**真实源 IP** 来判断应返回哪个解析结果
+- 在 Bridge 模式下，所有 DNS 请求经过 Docker NAT 后，源 IP 都变成了 Docker 网关地址（如 `192.168.100.1`），CoreDNS 无法区分不同客户端
+- Host 模式下容器直接使用宿主机网络栈，CoreDNS 能够获取到客户端的真实 IP 地址
+
+Host 模式的特点：
+- 容器直接监听宿主机端口（53/udp、53/tcp、9153、8080）
+- 无需配置 Docker 自定义网络、IP 转发和 iptables NAT
+- 宿主机端口不能被其他服务占用
+
+#### Bridge 网络模式 (不使用 View 时可选)
+
+如果**不使用** View 功能（即未配置 `coredns_view_rules`），可以通过设置 `coredns_network_bridge: true` 启用 Bridge 模式：
+
+```yaml
+# Playbook 配置示例 (Bridge 模式)
+vars:
+  coredns_network_bridge: true
+  coredns_network_subnet: "192.168.100.0/24"
+  coredns_network_gateway: "192.168.100.1"
+  # 注意: 不要同时配置 coredns_view_rules，否则会强制切换为 Host 模式
+```
+
+Bridge 模式下会自动配置：
+- Docker 自定义网络（subnet / gateway）
+- 端口映射（53/udp、53/tcp、9153、8080）
+- `init-system` 中启用 IP 转发和 iptables NAT 规则
+
+> **总结**: 不使用 View → 可设置 `coredns_network_bridge: true` 使用 Bridge 模式；使用 View → **强制 Host 模式**。
+
 ### 配置热加载
 
 CoreDNS 支持 `SIGUSR1` 信号重载配置,无需重启容器:
@@ -1195,6 +1237,13 @@ roles/coredns/
 ```
 
 ## 版本历史
+
+- **v1.3.0** (2026-02-04)
+  - 支持 Bridge / Host 网络模式自动切换
+  - 配置 `coredns_view_rules` 时强制使用 Host 模式，确保 View 插件获取客户端真实 IP
+  - 未配置 View 时可通过 `coredns_network_bridge: true` 选择 Bridge 模式
+  - Bridge 模式下自动配置 IP 转发和 iptables NAT；Host 模式下跳过
+  - 新增 Docker 网络模式说明文档
 
 - **v1.2.0** (2026-01-31)
   - 新增 Docker 自动安装功能
