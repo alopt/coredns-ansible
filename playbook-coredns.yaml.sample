@@ -97,13 +97,13 @@
       - zone: "internal.demo.cn"
         rules:
           # 匹配 *-dev.internal.demo.cn (如 an-dev, ac-dev, test-dev)
-          - pattern: "^[a-zA-Z0-9]+-dev[.]demo[.]cn[.]$"
+          - pattern: "^[a-zA-Z0-9]+-dev[.]internal[.]demo[.]cn[.]$"
             comment: "泛域名 *-dev.internal.demo.cn 解析到开发环境"
             ttl: 60
             ips:
               - "10.21.70.81"
           # 匹配 *-ops.internal.demo.cn (如 git-ops, jenkins-ops)
-          - pattern: "^[a-zA-Z0-9]+-ops[.]demo[.]cn[.]$"
+          - pattern: "^[a-zA-Z0-9]+-ops[.]internal[.]demo[.]cn[.]$"
             comment: "泛域名 *-ops.internal.demo.cn 解析到生产环境"
             ttl: 60
             ips:

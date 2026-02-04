@@ -18,7 +18,7 @@
 ## 功能特性
 
 - **智能解析 (View-based DNS)**: 基于客户端 IP 地址返回不同的解析结果
-- **正则匹配**: 支持泛域名解析 (如 `*-dev.demo.cn`)
+- **正则匹配**: 支持泛域名解析 (如 `*-dev.internal.demo.cn`)
 - **域名转发**: 特定域名使用指定的上游 DNS 服务器
 - **Hosts 文件**: 静态域名解析
 - **配置热加载**: 支持 `SIGUSR1` 信号重载配置,无需重启服务
@@ -553,15 +553,15 @@ coredns_view_rules:
 coredns_regex_rules:
   - zone: "demo.cn"
     rules:
-      # 匹配 *-dev.demo.cn
-      - pattern: "^[a-zA-Z0-9]+-dev[.]demo[.]cn[.]$"
-        comment: "泛域名 *-dev.demo.cn 解析到开发环境"
+      # 匹配 *-dev.internal.demo.cn
+      - pattern: "^[a-zA-Z0-9]+-dev[.]internal[.]demo[.]cn[.]$"
+        comment: "泛域名 *-dev.internal.demo.cn 解析到开发环境"
         ttl: 60
         ips:
           - "10.21.70.81"
 
       # 匹配 *-ops.demo.cn
-      - pattern: "^[a-zA-Z0-9]+-ops[.]demo[.]cn[.]$"
+      - pattern: "^[a-zA-Z0-9]+-ops[.]internal[.]demo[.]cn[.]$"
         comment: "泛域名 *-ops.demo.cn 解析到生产环境"
         ttl: 60
         ips:

@@ -11,7 +11,7 @@
 # 智能解析 - View-based DNS (根据客户端 IP 返回不同结果)
 import {{ coredns_deploy_dir }}/config/zones/views.conf
 
-# 正则匹配解析 - 泛域名 (*-dev.demo.cn 等)
+# 正则匹配解析 - 泛域名 (*-dev.internal.demo.cn 等)
 import {{ coredns_deploy_dir }}/config/zones/regex.conf
 
 # 特定域名转发 (GitHub, Google 等)
