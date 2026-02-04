@@ -28,7 +28,7 @@
         fallthrough
     }
 {% endfor %}
-    log
+    log . {{ coredns_log_format }}
     errors
 }
 

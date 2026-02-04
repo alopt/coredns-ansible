@@ -1,4 +1,6 @@
 # {{ ansible_managed }}
+# CoreDNS DNS 查询日志轮转配置
+# 按日切割，压缩后保留 {{ coredns_logrotate_days }} 天
 {{ coredns_logs_dir }}/*.log {
     daily
     missingok
@@ -6,9 +8,10 @@
     compress
     delaycompress
     notifempty
-    create 0644 root root
-    sharedscripts
-    postrotate
-        docker kill --signal=USR1 coredns 2>/dev/null || true
-    endscript
+    # copytruncate: 截断原文件而非重命名，适用于 stdout 重定向场景
+    # CoreDNS stdout 以 O_APPEND 模式重定向到日志文件，
+    # copytruncate 后进程自动从文件头开始写入，无需重启服务
+    copytruncate
+    dateext
+    dateformat -%Y%m%d
 }

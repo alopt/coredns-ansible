@@ -5,7 +5,7 @@
 # ============================================================
 
 # 部署目录 (与目标节点一致)
-coredns_deploy_dir: "/root/coredns"
+coredns_deploy_dir: "/etc/coredns"
 coredns_logs_dir: "/data/docker/coredns/logs"
 
 # CoreDNS 镜像配置
@@ -29,8 +29,18 @@ coredns_cache_ttl: 300
 # # 例外：hosts文件会自动重载（coredns_hosts_entries中的解析域名）
 # coredns_reload_interval: "10s"
 
+# DNS 查询日志配置
+# 日志输出到文件 (CoreDNS stdout 重定向到 /var/log/coredns/coredns.log)
+coredns_log_to_file: true
+# 日志文件名 (位于 coredns_logs_dir 目录下)
+coredns_log_file: "coredns.log"
+# 日志格式: {combined} 标准格式, {common} 简洁格式, 或自定义格式
+# {combined} 格式包含: 客户端IP:端口 查询ID 查询类型 域名 协议 响应码 响应大小 耗时
+coredns_log_format: "{combined}"
+
 # 日志轮转配置
-coredns_logrotate_days: 30
+# 按日切割，压缩后保留 90 天
+coredns_logrotate_days: 90
 
 # ============================================================
 # hosts 文件配置

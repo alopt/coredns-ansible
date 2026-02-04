@@ -26,6 +26,16 @@
       - 192.168.0.100
       - 192.168.0.101
     coredns_cache_ttl: 300
+    # ============================================================
+    # DNS 查询日志配置
+    # 日志输出到文件，按日切割，压缩后保留 90 天
+    # ============================================================
+    coredns_log_to_file: true                  # 启用文件日志 (stdout 重定向)
+    coredns_log_file: "coredns.log"            # 日志文件名
+    coredns_log_format: "{combined}"           # 标准格式 (含客户端IP/查询类型/域名/响应码/耗时等)
+    coredns_logrotate_days: 90                 # 压缩后保留 90 天
+    # 日志文件路径: {{ coredns_logs_dir }}/coredns.log (默认 /data/docker/coredns/logs/coredns.log)
+    # 轮转后文件: coredns.log-20260204.gz, coredns.log-20260203.gz, ...
     # 网络配置, 确保与现有网络不冲突, 且与Makefile中定义的网络一致
     coredns_network_subnet: "192.168.100.0/24"
     coredns_network_gateway: "192.168.100.1"

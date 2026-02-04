@@ -38,11 +38,17 @@ ARG BUILD_PLATFORM=linux/amd64
 FROM --platform=${BUILD_PLATFORM} alpine:3.19
 
 # 安装运行时依赖
-RUN apk add --no-cache ca-certificates tzdata bind-tools && \
+# moreutils: 提供 ts 命令，高性能为日志行添加时间戳
+# libcap: 提供 setcap，设置文件级 capability
+RUN apk add --no-cache ca-certificates tzdata bind-tools libcap moreutils && \
     adduser -D -H -u 1000 coredns
 
 # 复制构建产物
 COPY --from=builder /build/coredns /usr/local/bin/coredns
+
+# 设置文件级 capability，允许非 root 用户绑定特权端口 (53)
+# cap_add 仅设置 bounding set，非 root 用户还需要文件级 capability 才能生效
+RUN setcap cap_net_bind_service=+ep /usr/local/bin/coredns
 
 # 创建配置目录
 RUN mkdir -p /etc/coredns /var/log/coredns && \

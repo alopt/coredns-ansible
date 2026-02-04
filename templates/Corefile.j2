@@ -40,8 +40,8 @@ import {{ coredns_deploy_dir }}/config/zones/internal-zones.conf
     # 缓存配置
     cache {{ coredns_cache_ttl }}
 
-    # 日志记录
-    log
+    # DNS 查询日志 (标准格式)
+    log . {{ coredns_log_format }}
 
     # 错误日志
     errors

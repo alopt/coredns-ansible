@@ -1,0 +1,27 @@
+#!/bin/sh
+# {{ ansible_managed }}
+# CoreDNS 入口脚本
+# - 为每行日志添加时间戳
+# - 同时输出到 stdout (docker logs) 和日志文件
+# - exec 确保 CoreDNS 为 PID 1，信号传递正常 (SIGUSR1 热加载)
+
+LOG_FILE="/var/log/coredns/{{ coredns_log_file | default('coredns.log') }}"
+CONF="{{ coredns_deploy_dir }}/config/Corefile"
+PIPE="/tmp/coredns-log.pipe"
+
+# 创建命名管道
+mkfifo "$PIPE" 2>/dev/null || true
+
+# 后台进程: 从管道读取 → 添加时间戳 → tee 到 stdout + 文件
+# ts (moreutils) 性能更优；fallback 到 while+date (兼容无 moreutils 的镜像)
+if command -v ts >/dev/null 2>&1; then
+    (ts '[%Y-%m-%d %H:%M:%S]' < "$PIPE" | tee -a "$LOG_FILE") &
+else
+    (while IFS= read -r line; do
+        printf '[%s] %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$line"
+    done < "$PIPE" | tee -a "$LOG_FILE") &
+fi
+
+# CoreDNS 替换 shell 成为 PID 1 (exec)
+# stdout/stderr 写入命名管道，由后台进程处理
+exec /usr/local/bin/coredns -conf "$CONF" > "$PIPE" 2>&1

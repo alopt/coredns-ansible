@@ -221,9 +221,9 @@ ansible-playbook -i inventory playbook-coredns.yaml --tags build --limit coredns
 ```
 
 执行后会在目标节点生成:
-- `/root/coredns/Dockerfile` - 镜像构建文件
-- `/root/coredns/Makefile` - 构建和运维工具(根据变量自动生成)
-- `/root/coredns/plugin.cfg` - 插件配置
+- `/etc/coredns/Dockerfile` - 镜像构建文件
+- `/etc/coredns/Makefile` - 构建和运维工具(根据变量自动生成)
+- `/etc/coredns/plugin.cfg` - 插件配置
 
 **第二步：配置构建参数**
 
@@ -253,7 +253,7 @@ vars:
 SSH 登录到构建节点:
 
 ```bash
-cd /root/coredns
+cd /etc/coredns
 
 # 查看所有可用命令和当前配置
 make help
@@ -323,7 +323,7 @@ docker inspect your-docker-repo.example.com:4003/coredns:1.14.1-view
 ansible-playbook -i inventory playbook-coredns.yaml --tags build
 
 # 方法 2: 直接在目标节点编辑 Makefile (不推荐)
-vi /root/coredns/Makefile
+vi /etc/coredns/Makefile
 ```
 
 推荐使用方法 1,通过 Ansible 统一管理配置。
@@ -392,7 +392,7 @@ ansible-playbook -i inventory playbook-coredns.yaml --tags build
 
 ```bash
 # 检查服务状态
-docker-compose -f /root/coredns/docker-compose.yml ps
+docker-compose -f /etc/coredns/docker-compose.yml ps
 
 # 测试 DNS 解析
 nslookup git-dev.example.com <coredns-server-ip>
@@ -407,7 +407,7 @@ docker logs coredns
 
 | 变量名 | 默认值 | 说明 |
 |--------|--------|------|
-| `coredns_deploy_dir` | `/root/coredns` | 部署目录 |
+| `coredns_deploy_dir` | `/etc/coredns` | 部署目录 |
 | `coredns_logs_dir` | `/data/docker/coredns/logs` | 日志目录 |
 | `coredns_image` | `your-docker-repo.example.com:4002/coredns` | 镜像地址 |
 | `coredns_version` | `1.14.1-view` | 镜像版本 |
@@ -1038,7 +1038,7 @@ curl http://localhost:8080/health
 
 ### 使用 Makefile (推荐)
 
-在部署目录 (`/root/coredns`) 中:
+在部署目录 (`/etc/coredns`) 中:
 
 ```bash
 # 启动服务
@@ -1083,13 +1083,13 @@ ansible-playbook -i inventory playbook-coredns.yaml --tags validate
 
 ```bash
 # 查看容器状态
-docker-compose -f /root/coredns/docker-compose.yml ps
+docker-compose -f /etc/coredns/docker-compose.yml ps
 
 # 重载配置
 docker kill --signal=SIGUSR1 coredns
 
 # 重启服务
-docker-compose -f /root/coredns/docker-compose.yml restart
+docker-compose -f /etc/coredns/docker-compose.yml restart
 
 # 查看日志
 docker logs -f coredns
@@ -1192,7 +1192,7 @@ docker exec -it coredns sh
 /usr/local/bin/coredns -conf /etc/coredns/config/Corefile -dry-run
 
 # 检查配置文件语法
-cat /root/coredns/config/Corefile
+cat /etc/coredns/config/Corefile
 ```
 
 ### 7. 日志权限问题

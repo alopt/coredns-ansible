@@ -7,7 +7,13 @@ services:
     image: {{ coredns_image }}:{{ coredns_version }}
     container_name: coredns
     restart: always
-    user: root
+    # 非 root 用户运行，最小权限原则
+    user: "1000:1000"
+    cap_drop:
+      - ALL
+    cap_add:
+      # 允许绑定 53 端口 (特权端口 < 1024)
+      - NET_BIND_SERVICE
 {% if (coredns_view_rules is not defined or coredns_view_rules | length == 0) and (coredns_network_bridge | default(false)) %}
     # Bridge 网络模式: 未使用 view 插件, 通过端口映射对外提供服务
     ports:
@@ -26,7 +32,14 @@ services:
       # 挂载整个目录，支持 import 和 SIGUSR1 热加载
       - {{ coredns_deploy_dir }}/config:{{ coredns_deploy_dir }}/config:ro
       - {{ coredns_logs_dir }}:/var/log/coredns
+{% if coredns_log_to_file | default(true) %}
+    # DNS 查询日志: 命名管道 + 时间戳 + tee 双输出 (stdout + 文件)
+    # exec 确保 CoreDNS 为 PID 1，SIGUSR1 热加载信号正常传递
+    entrypoint: ["/bin/sh"]
+    command: ["{{ coredns_deploy_dir }}/config/coredns-entrypoint.sh"]
+{% else %}
     command: -conf {{ coredns_deploy_dir }}/config/Corefile
+{% endif %}
     environment:
       TZ: Asia/Shanghai
     healthcheck:

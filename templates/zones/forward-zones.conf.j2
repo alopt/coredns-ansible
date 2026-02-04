@@ -8,7 +8,7 @@
 {{ zone.domains | join(' ') }} {
     forward . {{ zone.upstream }}
     cache {{ coredns_cache_ttl | default(300) }}
-    log
+    log . {{ coredns_log_format }}
     errors
 }
 
@@ -32,7 +32,7 @@
         max_fails 3
     }
     cache 30  # AD 域名缓存时间较短，避免过期
-    log
+    log . {{ coredns_log_format }}
     errors
 }
 
@@ -48,7 +48,7 @@
         max_fails 3
     }
     cache 30
-    log
+    log . {{ coredns_log_format }}
     errors
 }
 

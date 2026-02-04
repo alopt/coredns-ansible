@@ -41,7 +41,7 @@
 {% endfor %}
 {% endif %}
 
-    log
+    log . {{ coredns_log_format }}
     errors
 {% if zone.transfer_to is defined %}
     # Zone 传输

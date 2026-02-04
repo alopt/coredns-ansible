@@ -16,6 +16,8 @@
         answer "{% raw %}{{ .Name }}{% endraw %} {{ view.ttl | default(60) }} IN A {{ ip }}"
 {% endfor %}
     }
+    log . {{ coredns_log_format }}
+    errors
 }
 
 {% endfor %}
@@ -27,6 +29,8 @@
         answer "{% raw %}{{ .Name }}{% endraw %} {{ rule.default.ttl | default(60) }} IN A {{ ip }}"
 {% endfor %}
     }
+    log . {{ coredns_log_format }}
+    errors
 }
 
 {% endif %}

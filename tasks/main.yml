@@ -1,6 +1,6 @@
 # roles/coredns/tasks/main.yml
 # CoreDNS Docker-Compose 部署任务
-# 部署目录: {{ coredns_deploy_dir }} (默认 /root/coredns)
+# 部署目录: {{ coredns_deploy_dir }} (默认 /etc/coredns)
 ---
 
 # ============================================================
@@ -101,6 +101,21 @@
     - docker
 
 # ============================================================
+# 系统内核参数 (非 root 用户绑定特权端口)
+# ============================================================
+
+- name: Allow non-root users to bind to port 53 (sysctl)
+  sysctl:
+    name: net.ipv4.ip_unprivileged_port_start
+    value: '53'
+    sysctl_set: yes
+    state: present
+    reload: yes
+  tags:
+    - coredns
+    - configuration
+
+# ============================================================
 # 创建部署目录结构
 # ============================================================
 
@@ -175,6 +190,20 @@
     owner: root
     group: root
     mode: '0644'
+  notify: restart coredns
+  tags:
+    - coredns
+    - configuration
+    - config
+
+- name: Deploy CoreDNS entrypoint script (日志时间戳 + 双输出)
+  template:
+    src: coredns-entrypoint.sh.j2
+    dest: "{{ coredns_deploy_dir }}/config/coredns-entrypoint.sh"
+    owner: root
+    group: root
+    mode: '0755'
+  when: coredns_log_to_file | default(true)
   notify: restart coredns
   tags:
     - coredns
