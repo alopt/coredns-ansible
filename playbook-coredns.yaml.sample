@@ -2,7 +2,7 @@
   serial: 1  # 逐台执行，确保 DNS 服务连续性
   vars:
     # 镜像仓库配置
-    coredns_registry: "your-docker-repo.demo.com:4003"
+    coredns_registry: "your-docker-repo.example.com:4003"
     coredns_image_name: "coredns"
     # CoreDNS 和 Go 版本
     coredns_build_version: "1.14.1"
@@ -14,11 +14,11 @@
 
     # CoreDNS 版本和镜像配置
     coredns_version: "1.14.1-view"
-    coredns_image: "your-docker-repo.demo.com:4002/coredns"
+    coredns_image: "your-docker-repo.example.com:4002/coredns"
     docker_registry_mirrors:
-      - "https://your-docker-repo.demo.com:4002"
+      - "https://your-docker-repo.example.com:4002"
     docker_insecure_registries:
-      - "your-docker-repo.demo.com"
+      - "your-docker-repo.example.com"
     # 是否安装 Docker, 默认关闭
     docker_install_enabled: false
     # 上游 DNS 服务器
@@ -37,9 +37,9 @@
     # ============================================================
     coredns_hosts_entries:
       # === 生产环境运维 ===
-      - 10.100.1.212 git-ops.demo.cn
+      - 10.100.1.212 git-ops.example.com
       # === 开发环境基础设施 ===
-      - 10.21.70.81 uc-dev.demo.cn
+      - 10.21.70.81 uc-dev.example.com
     # ============================================================
     # 特定域名转发
     # ============================================================
@@ -62,7 +62,7 @@
     coredns_view_enabled: true
     # 视图智能解析规则
     coredns_view_rules:
-      - domain: "test2026.demo.cn"
+      - domain: "test2026.example.com"
         views:
           - name: "internal"
             cidr: "10.21.0.0/16"
@@ -94,17 +94,17 @@
     # 使用 Go 正则表达式语法
     # ============================================================
     coredns_regex_rules:
-      - zone: "internal.demo.cn"
+      - zone: "internal.example.com"
         rules:
-          # 匹配 *-dev.internal.demo.cn (如 an-dev, ac-dev, test-dev)
-          - pattern: "^[a-zA-Z0-9]+-dev[.]internal[.]demo[.]cn[.]$"
-            comment: "泛域名 *-dev.internal.demo.cn 解析到开发环境"
+          # 匹配 *-dev.internal.example.com (如 an-dev, ac-dev, test-dev)
+          - pattern: "^[a-zA-Z0-9]+-dev[.]internal[.]example[.]com[.]$"
+            comment: "泛域名 *-dev.internal.example.com 解析到开发环境"
             ttl: 60
             ips:
               - "10.21.70.81"
-          # 匹配 *-ops.internal.demo.cn (如 git-ops, jenkins-ops)
-          - pattern: "^[a-zA-Z0-9]+-ops[.]internal[.]demo[.]cn[.]$"
-            comment: "泛域名 *-ops.internal.demo.cn 解析到生产环境"
+          # 匹配 *-ops.internal.example.com (如 git-ops, jenkins-ops)
+          - pattern: "^[a-zA-Z0-9]+-ops[.]internal[.]example[.]com[.]$"
+            comment: "泛域名 *-ops.internal.example.com 解析到生产环境"
             ttl: 60
             ips:
               - "10.100.1.212"
@@ -147,13 +147,13 @@
     # ============================================================
     coredns_internal_zones:
       # ============================================================
-      # 示例: 内部域名 internal.demo.cn
+      # 示例: 内部域名 internal.example.com
       # 注意: 正则规则 (coredns_regex_rules) 会自动合并到此 zone
       # ============================================================
-      - name: "internal.demo.cn"
+      - name: "internal.example.com"
         default_ttl: 3600
-        primary_ns: "ns1.internal.demo.cn"
-        admin_email: "admin.internal.demo.cn"
+        primary_ns: "ns1.internal.example.com"
+        admin_email: "admin.internal.example.com"
         records:
           # ============================================================
           # A 记录 - IPv4 地址映射 (推荐 TTL: 60 秒)
@@ -213,19 +213,19 @@
           # ============================================================
           - type: "CNAME"
             name: "mail"
-            value: "mx1.internal.demo.cn"
+            value: "mx1.internal.example.com"
             ttl: 1200
           - type: "CNAME"
             name: "ftp"
-            value: "web.internal.demo.cn"
+            value: "web.internal.example.com"
             ttl: 1200
           - type: "CNAME"
             name: "cdn"
-            value: "web.internal.demo.cn"
+            value: "web.internal.example.com"
             ttl: 1200
           - type: "CNAME"
             name: "portal"
-            value: "www.internal.demo.cn"
+            value: "www.internal.example.com"
             ttl: 1200
 
           # ============================================================
@@ -233,13 +233,13 @@
           # ============================================================
           - type: "MX"
             name: "@"
-            value: "mx1.internal.demo.cn"
+            value: "mx1.internal.example.com"
             priority: 10
             ttl: 3600
             comment: "主邮件服务器"
           - type: "MX"
             name: "@"
-            value: "mx2.internal.demo.cn"
+            value: "mx2.internal.example.com"
             priority: 20
             ttl: 3600
             comment: "备邮件服务器"
@@ -265,7 +265,7 @@
           # DMARC 记录
           - type: "TXT"
             name: "_dmarc"
-            value: "v=DMARC1; p=quarantine; rua=mailto:dmarc@internal.demo.cn"
+            value: "v=DMARC1; p=quarantine; rua=mailto:dmarc@internal.example.com"
             ttl: 1800
             comment: "DMARC 记录"
           # 域名验证
@@ -287,7 +287,7 @@
           # LDAP 服务
           - type: "SRV"
             name: "_ldap._tcp"
-            value: "ldap.internal.demo.cn"
+            value: "ldap.internal.example.com"
             port: 389
             priority: 0
             weight: 100
@@ -296,7 +296,7 @@
           # Kerberos 服务
           - type: "SRV"
             name: "_kerberos._tcp"
-            value: "kdc.internal.demo.cn"
+            value: "kdc.internal.example.com"
             port: 88
             priority: 0
             weight: 100
@@ -304,7 +304,7 @@
           # XMPP 服务
           - type: "SRV"
             name: "_xmpp-server._tcp"
-            value: "xmpp.internal.demo.cn"
+            value: "xmpp.internal.example.com"
             port: 5269
             priority: 0
             weight: 100
@@ -324,7 +324,7 @@
             name: "@"
             flags: 0
             tag: "iodef"
-            value: "mailto:security@internal.demo.cn"
+            value: "mailto:security@internal.example.com"
             ttl: 3600
             comment: "证书问题通知邮箱"
 
@@ -335,19 +335,19 @@
           # PTR 记录 - 反向解析
           - type: "PTR"
             name: "10"
-            value: "www.internal.demo.cn"
+            value: "www.internal.example.com"
             ttl: 3600
           - type: "PTR"
             name: "20"
-            value: "web.internal.demo.cn"
+            value: "web.internal.example.com"
             ttl: 3600
           - type: "PTR"
             name: "30"
-            value: "db.internal.demo.cn"
+            value: "db.internal.example.com"
             ttl: 3600
           - type: "PTR"
             name: "50"
-            value: "mx1.internal.demo.cn"
+            value: "mx1.internal.example.com"
             ttl: 3600
 
       # 指定唯一的反向解析名称，避免和正向解析区域重复（解决：每次 ping 的 ICMP 回复行显示的域名都不一样）

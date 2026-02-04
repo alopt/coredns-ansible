@@ -218,8 +218,8 @@ test-view:
 	@echo "--- 测试 {{ coredns_view_rules[0].domain }} ---"
 	nslookup {{ coredns_view_rules[0].domain }} 127.0.0.1 || true
 {% else %}
-	@echo "--- 测试 test2026.demo.cn ---"
-	nslookup test2026.demo.cn 127.0.0.1 || true
+	@echo "--- 测试 test2026.example.com ---"
+	nslookup test2026.example.com 127.0.0.1 || true
 {% endif %}
 {% raw %}
 	@echo ""

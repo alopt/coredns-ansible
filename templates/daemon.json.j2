@@ -6,6 +6,6 @@
     "max-file": "{{ docker_log_max_file | default('7') }}",
     "max-size": "{{ docker_log_max_size | default('50m') }}"
   },
-  "registry-mirrors": {{ docker_registry_mirrors | default(['https://your-docker-repo.demo.com:4002']) | to_json }},
-  "insecure-registries": {{ docker_insecure_registries | default(['your-docker-repo.demo.com:4012']) | to_json }}
+  "registry-mirrors": {{ docker_registry_mirrors | default(['https://your-docker-repo.example.com:4002']) | to_json }},
+  "insecure-registries": {{ docker_insecure_registries | default(['your-docker-repo.example.com:4012']) | to_json }}
 }

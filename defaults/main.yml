@@ -9,7 +9,7 @@ coredns_deploy_dir: "/root/coredns"
 coredns_logs_dir: "/data/docker/coredns/logs"
 
 # CoreDNS 镜像配置
-coredns_image: "your-docker-repo.demo.com:4003/coredns"
+coredns_image: "your-docker-repo.example.com:4003/coredns"
 coredns_version: "1.14.1-view"
 
 # 上游 DNS 服务器
@@ -136,9 +136,9 @@ docker_iptables: false
 docker_log_max_file: "7"
 docker_log_max_size: "50m"
 docker_registry_mirrors:
-  - "https://your-docker-repo.demo.com:4002"
+  - "https://your-docker-repo.example.com:4002"
 docker_insecure_registries:
-  - "your-docker-repo.demo.com:4012"
+  - "your-docker-repo.example.com:4012"
 
 # ============================================================
 # Docker 安装配置
@@ -172,7 +172,7 @@ docker_install_user: "ubuntu"
 # ============================================================
 
 # 镜像仓库配置
-coredns_registry: "your-docker-repo.demo.com:4003"
+coredns_registry: "your-docker-repo.example.com:4003"
 coredns_image_name: "coredns"
 
 # CoreDNS 和 Go 版本

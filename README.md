@@ -18,7 +18,7 @@
 ## 功能特性
 
 - **智能解析 (View-based DNS)**: 基于客户端 IP 地址返回不同的解析结果 (需使用 Host 网络模式)
-- **正则匹配**: 支持泛域名解析 (如 `*-dev.internal.demo.cn`)
+- **正则匹配**: 支持泛域名解析 (如 `*-dev.internal.example.com`)
 - **域名转发**: 特定域名使用指定的上游 DNS 服务器
 - **Hosts 文件**: 静态域名解析
 - **配置热加载**: 支持 `SIGUSR1` 信号重载配置,无需重启服务
@@ -81,9 +81,9 @@ server {
     ssl_protocols TLSv1.2 TLSv1.3;
     ssl_ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE:ECDH:AES:HIGH:!NULL:!aNULL:!MD5:!ADH:!RC4:!DH:!DHE;
     ssl_prefer_server_ciphers on;
-    ssl_certificate ssl/demo_com.crt;
-    ssl_certificate_key ssl/demo_com.key;
-    server_name your-docker-repo.demo.com;
+    ssl_certificate ssl/example_com.crt;
+    ssl_certificate_key ssl/example_com.key;
+    server_name your-docker-repo.example.com;
     # disable any limits to avoid HTTP 413 for large image uploads
     client_max_body_size 0;
     # required to avoid HTTP 411: see Issue #1486 (https://github.com/docker/docker/issues/1486)
@@ -117,9 +117,9 @@ server {
     ssl_protocols TLSv1.2 TLSv1.3;
     ssl_ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE:ECDH:AES:HIGH:!NULL:!aNULL:!MD5:!ADH:!RC4:!DH:!DHE;
     ssl_prefer_server_ciphers on;
-    ssl_certificate ssl/demo_com.crt;
-    ssl_certificate_key ssl/demo_com.key;
-    server_name your-docker-repo.demo.com;
+    ssl_certificate ssl/example_com.crt;
+    ssl_certificate_key ssl/example_com.key;
+    server_name your-docker-repo.example.com;
     # disable any limits to avoid HTTP 413 for large image uploads
     client_max_body_size 0;
     # required to avoid HTTP 411: see Issue #1486 (https://github.com/docker/docker/issues/1486)
@@ -178,10 +178,10 @@ server {
 # /etc/docker/daemon.json
 {
   "insecure-registries": [
-    "your-docker-repo.demo.com:4012"
+    "your-docker-repo.example.com:4012"
   ],
   "registry-mirrors": [
-    "https://your-docker-repo.demo.com:4002"
+    "https://your-docker-repo.example.com:4002"
   ]
 }
 ```
@@ -195,7 +195,7 @@ systemctl restart docker
 登录 Nexus Docker 仓库:
 
 ```bash
-docker login your-docker-repo.demo.com:4003
+docker login your-docker-repo.example.com:4003
 ```
 
 ## 镜像构建
@@ -233,7 +233,7 @@ ansible-playbook -i inventory playbook-coredns.yaml --tags build --limit coredns
 # playbook-coredns.yaml 或 group_vars
 vars:
   # 镜像仓库配置
-  coredns_registry: "your-docker-repo.demo.com:4003"
+  coredns_registry: "your-docker-repo.example.com:4003"
   coredns_image_name: "coredns"
 
   # CoreDNS 和 Go 版本
@@ -265,13 +265,13 @@ make info
 ============================================================
 CoreDNS 构建配置信息
 ============================================================
-Registry:         your-docker-repo.demo.com:4003
+Registry:         your-docker-repo.example.com:4003
 Image Name:       coredns
 CoreDNS Version:  1.14.1
 Go Version:       1.24
 Network Mode:     host
-Image Tag:        your-docker-repo.demo.com:4003/coredns:1.14.1-view
-Image Tag Latest: your-docker-repo.demo.com:4003/coredns:latest
+Image Tag:        your-docker-repo.example.com:4003/coredns:1.14.1-view
+Image Tag Latest: your-docker-repo.example.com:4003/coredns:latest
 ============================================================
 ```
 
@@ -308,10 +308,10 @@ make release
 make info
 
 # 从 Nexus 拉取验证
-docker pull your-docker-repo.demo.com:4003/coredns:1.14.1-view
+docker pull your-docker-repo.example.com:4003/coredns:1.14.1-view
 
 # 查看镜像详情
-docker inspect your-docker-repo.demo.com:4003/coredns:1.14.1-view
+docker inspect your-docker-repo.example.com:4003/coredns:1.14.1-view
 ```
 
 #### 5. 更新构建配置
@@ -335,11 +335,11 @@ vi /root/coredns/Makefile
 docker build \
   --build-arg COREDNS_VERSION=1.14.1 \
   --build-arg GO_VERSION=1.24 \
-  -t your-docker-repo.demo.com:4003/coredns:1.14.1-view \
+  -t your-docker-repo.example.com:4003/coredns:1.14.1-view \
   .
 
 # 推送到 Nexus
-docker push your-docker-repo.demo.com:4003/coredns:1.14.1-view
+docker push your-docker-repo.example.com:4003/coredns:1.14.1-view
 ```
 
 ### 构建说明
@@ -360,7 +360,7 @@ docker push your-docker-repo.demo.com:4003/coredns:1.14.1-view
   serial: 1  # 逐台执行,确保 DNS 服务连续性
   vars:
     coredns_version: "1.14.1-view"
-    coredns_image: "your-docker-repo.demo.com:4002/coredns"
+    coredns_image: "your-docker-repo.example.com:4002/coredns"
 
     # 基础配置 示例
     coredns_upstream_servers:
@@ -369,7 +369,7 @@ docker push your-docker-repo.demo.com:4003/coredns:1.14.1-view
 
     # Hosts 静态解析 示例
     coredns_hosts_entries:
-      - 10.21.70.81 git-dev.demo.cn
+      - 10.21.70.81 git-dev.example.com
 
   roles:
     - coredns
@@ -395,7 +395,7 @@ ansible-playbook -i inventory playbook-coredns.yaml --tags build
 docker-compose -f /root/coredns/docker-compose.yml ps
 
 # 测试 DNS 解析
-nslookup git-dev.demo.cn <coredns-server-ip>
+nslookup git-dev.example.com <coredns-server-ip>
 
 # 查看日志
 docker logs coredns
@@ -409,7 +409,7 @@ docker logs coredns
 |--------|--------|------|
 | `coredns_deploy_dir` | `/root/coredns` | 部署目录 |
 | `coredns_logs_dir` | `/data/docker/coredns/logs` | 日志目录 |
-| `coredns_image` | `your-docker-repo.demo.com:4002/coredns` | 镜像地址 |
+| `coredns_image` | `your-docker-repo.example.com:4002/coredns` | 镜像地址 |
 | `coredns_version` | `1.14.1-view` | 镜像版本 |
 | `coredns_upstream_servers` | `["192.168.0.100", "192.168.0.101"]` | 上游 DNS 服务器 |
 | `coredns_cache_ttl` | `300` | 缓存时间 (秒) |
@@ -498,7 +498,7 @@ docker logs coredns
 
 ```yaml
 coredns_hosts_entries:
-  - 10.21.70.81 git-dev.demo.cn
+  - 10.21.70.81 git-dev.example.com
 ```
 
 ### 示例 2: 特定域名转发
@@ -523,7 +523,7 @@ coredns_forward_zones:
 ```yaml
 coredns_view_enabled: true
 coredns_view_rules:
-  - domain: "test2026.demo.cn"
+  - domain: "test2026.example.com"
     views:
       # 内网访问
       - name: "internal"
@@ -550,18 +550,18 @@ coredns_view_rules:
 
 ```yaml
 coredns_regex_rules:
-  - zone: "demo.cn"
+  - zone: "internal.example.com"
     rules:
-      # 匹配 *-dev.internal.demo.cn
-      - pattern: "^[a-zA-Z0-9]+-dev[.]internal[.]demo[.]cn[.]$"
-        comment: "泛域名 *-dev.internal.demo.cn 解析到开发环境"
+      # 匹配 *-dev.internal.example.com
+      - pattern: "^[a-zA-Z0-9]+-dev[.]internal[.]example[.]com[.]$"
+        comment: "泛域名 *-dev.internal.example.com 解析到开发环境"
         ttl: 60
         ips:
           - "10.21.70.81"
 
-      # 匹配 *-ops.demo.cn
-      - pattern: "^[a-zA-Z0-9]+-ops[.]internal[.]demo[.]cn[.]$"
-        comment: "泛域名 *-ops.demo.cn 解析到生产环境"
+      # 匹配 *-ops.example.com
+      - pattern: "^[a-zA-Z0-9]+-ops[.]internal[.]example[.]com[.]$"
+        comment: "泛域名 *-ops.example.com 解析到生产环境"
         ttl: 60
         ips:
           - "10.100.1.212"
@@ -1166,14 +1166,14 @@ bash -x /tmp/docker_install.sh
 **解决**:
 ```bash
 # 确保已登录
-docker login your-docker-repo.demo.com:4003
+docker login your-docker-repo.example.com:4003
 
 # 检查 daemon.json 配置
 cat /etc/docker/daemon.json
 
 # 确保仓库在 insecure-registries 列表中
 {
-  "insecure-registries": ["your-docker-repo.demo.com:4003"]
+  "insecure-registries": ["your-docker-repo.example.com:4003"]
 }
 
 # 重启 Docker
