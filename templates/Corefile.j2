@@ -35,16 +35,38 @@ import {{ coredns_deploy_dir }}/config/zones/internal-zones.conf
     forward . {{ coredns_upstream_servers | join(' ') }} {
         prefer_udp
         health_check 5s
+        max_concurrent {{ coredns_forward_max_concurrent }}
     }
 
-    # 缓存配置
-    cache {{ coredns_cache_ttl }}
+    # 缓存配置 (高性能调优)
+    cache {
+        # 正向缓存: 最大条目数 + TTL 上限
+        success {{ coredns_cache_success_size }} {{ coredns_cache_ttl }}
+        # 负向缓存: NXDOMAIN/NODATA 单独设置较短 TTL
+        denial {{ coredns_cache_denial_size }} {{ coredns_cache_denial_ttl }}
+{% if coredns_cache_prefetch | default(0) | int > 0 %}
+        # 预取: 高频域名在 TTL 到期前自动刷新，减少缓存穿透
+        prefetch {{ coredns_cache_prefetch }} 1h
+{% endif %}
+{% if coredns_cache_serve_stale | default(0) | int > 0 %}
+        # 过期缓存容灾: 上游故障时继续返回过期记录
+        serve_stale {{ coredns_cache_serve_stale }}s
+{% endif %}
+    }
 
+{% if coredns_bufsize_enabled | default(false) %}
+    # EDNS 缓冲区大小 (RFC 8020 推荐 1232，避免 UDP 分片)
+    bufsize {{ coredns_bufsize }}
+
+{% endif %}
     # DNS 查询日志 (标准格式)
     log . {{ coredns_log_format }}
 
     # 错误日志
     errors
+
+    # 就绪检查 (区别于健康检查，标识服务已准备好接收流量)
+    ready :8181
 
     # 健康检查端点
     health :{{ coredns_health_port }}

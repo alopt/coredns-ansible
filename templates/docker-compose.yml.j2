@@ -40,6 +40,11 @@ services:
 {% else %}
     command: -conf {{ coredns_deploy_dir }}/config/Corefile
 {% endif %}
+    # 文件描述符限制 (每个并发 DNS 连接消耗一个 fd)
+    ulimits:
+      nofile:
+        soft: {{ coredns_ulimit_nofile }}
+        hard: {{ coredns_ulimit_nofile }}
     environment:
       TZ: Asia/Shanghai
     healthcheck:

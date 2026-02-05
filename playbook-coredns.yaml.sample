@@ -25,7 +25,24 @@
     coredns_upstream_servers:
       - 192.168.0.100
       - 192.168.0.101
-    coredns_cache_ttl: 300
+    # ============================================================
+    # 性能调优 (缓存 / 并发 / 内核)
+    # ============================================================
+    coredns_cache_ttl: 300                    # 正向缓存 TTL 上限 (秒)
+    coredns_cache_success_size: 10000         # 正向缓存最大条目数
+    coredns_cache_denial_size: 5000           # 负向缓存最大条目数
+    coredns_cache_denial_ttl: 60              # 负向缓存 TTL (秒)
+    coredns_cache_prefetch: 10                # 预取: 1h 内查询 >= 10 次的域名自动刷新
+    coredns_cache_serve_stale: 3600           # 上游故障时提供过期缓存 (秒), 0=禁用
+    coredns_bufsize: 1232                     # EDNS UDP 缓冲区 (RFC 8020, 避免分片)
+    coredns_forward_max_concurrent: 1000      # 上游转发最大并发数
+    coredns_ulimit_nofile: 65535              # 容器文件描述符限制
+    # 主机内核调优 (默认开启)
+    coredns_sysctl_tuning: true
+    coredns_sysctl_rmem_max: 26214400         # UDP 接收缓冲区 25MB
+    coredns_sysctl_wmem_max: 26214400         # UDP 发送缓冲区 25MB
+    coredns_sysctl_somaxconn: 4096            # TCP backlog
+    coredns_sysctl_netdev_max_backlog: 10000  # 网卡接收队列
     # ============================================================
     # DNS 查询日志配置
     # 日志输出到文件，按日切割，压缩后保留 90 天

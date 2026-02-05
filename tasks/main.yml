@@ -101,7 +101,7 @@
     - docker
 
 # ============================================================
-# 系统内核参数 (非 root 用户绑定特权端口)
+# 系统内核参数调优
 # ============================================================
 
 - name: Allow non-root users to bind to port 53 (sysctl)
@@ -114,6 +114,59 @@
   tags:
     - coredns
     - configuration
+
+# DNS 网络性能调优 (UDP 缓冲区、TCP 队列、网卡队列)
+- name: Tune kernel - UDP receive buffer max ({{ coredns_sysctl_rmem_max }} bytes)
+  sysctl:
+    name: net.core.rmem_max
+    value: "{{ coredns_sysctl_rmem_max }}"
+    sysctl_set: yes
+    state: present
+    reload: yes
+  when: coredns_sysctl_tuning | default(true)
+  tags:
+    - coredns
+    - configuration
+    - performance
+
+- name: Tune kernel - UDP send buffer max ({{ coredns_sysctl_wmem_max }} bytes)
+  sysctl:
+    name: net.core.wmem_max
+    value: "{{ coredns_sysctl_wmem_max }}"
+    sysctl_set: yes
+    state: present
+    reload: yes
+  when: coredns_sysctl_tuning | default(true)
+  tags:
+    - coredns
+    - configuration
+    - performance
+
+- name: Tune kernel - TCP listen backlog ({{ coredns_sysctl_somaxconn }})
+  sysctl:
+    name: net.core.somaxconn
+    value: "{{ coredns_sysctl_somaxconn }}"
+    sysctl_set: yes
+    state: present
+    reload: yes
+  when: coredns_sysctl_tuning | default(true)
+  tags:
+    - coredns
+    - configuration
+    - performance
+
+- name: Tune kernel - network device backlog ({{ coredns_sysctl_netdev_max_backlog }})
+  sysctl:
+    name: net.core.netdev_max_backlog
+    value: "{{ coredns_sysctl_netdev_max_backlog }}"
+    sysctl_set: yes
+    state: present
+    reload: yes
+  when: coredns_sysctl_tuning | default(true)
+  tags:
+    - coredns
+    - configuration
+    - performance
 
 # ============================================================
 # 创建部署目录结构

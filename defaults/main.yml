@@ -22,8 +22,35 @@ coredns_dns_port: 53
 coredns_health_port: 8080
 coredns_metrics_port: 9153
 
-# 缓存时间（秒）
-coredns_cache_ttl: 300
+# ============================================================
+# 性能调优
+# ============================================================
+
+# 缓存配置
+coredns_cache_ttl: 300                    # 正向缓存 TTL 上限 (秒)
+coredns_cache_success_size: 10000         # 正向缓存最大条目数
+coredns_cache_denial_size: 5000           # 负向缓存 (NXDOMAIN/NODATA) 最大条目数
+coredns_cache_denial_ttl: 60              # 负向缓存 TTL (秒)，避免长时间缓存不存在的域名
+coredns_cache_prefetch: 10                # 预取阈值: 1小时内查询次数 >= 此值时，TTL 到期前自动刷新
+coredns_cache_serve_stale: 3600           # 上游故障时继续提供过期缓存 (秒)，0 为禁用
+
+# EDNS UDP 缓冲区大小 (RFC 8020 推荐 1232 字节，避免 UDP 分片)
+# 注意: bufsize 插件需要编译到镜像中 (plugin.cfg 已包含)，重新构建镜像后启用
+coredns_bufsize_enabled: false
+coredns_bufsize: 1232
+
+# 上游转发并发控制
+coredns_forward_max_concurrent: 1000      # 同时转发到上游的最大并发查询数
+
+# 主机内核调优 (DNS 网络性能)
+coredns_sysctl_tuning: true               # 是否应用内核参数调优
+coredns_sysctl_rmem_max: 26214400         # UDP 接收缓冲区上限 (25MB)
+coredns_sysctl_wmem_max: 26214400         # UDP 发送缓冲区上限 (25MB)
+coredns_sysctl_somaxconn: 4096            # TCP 全连接队列长度 (DNS-over-TCP)
+coredns_sysctl_netdev_max_backlog: 10000  # 网卡接收队列长度
+
+# 容器文件描述符限制
+coredns_ulimit_nofile: 65535              # 最大打开文件数 (每个并发连接消耗一个 fd)
 
 # # 配置自动重载间隔,目前是通过剧本手动发布的方式实现，所以这里不配置自动
 # # 例外：hosts文件会自动重载（coredns_hosts_entries中的解析域名）
