@@ -27,6 +27,12 @@
 {% endfor %}
         fallthrough
     }
+    template IN AAAA {
+        # {{ rule.comment | default('正则匹配规则') }} - IPv6 NODATA (防止 NXDOMAIN 阻断 A 查询)
+        match {{ rule.pattern }}
+        rcode NOERROR
+        fallthrough
+    }
 {% endfor %}
     log . {{ coredns_log_format }}
     errors

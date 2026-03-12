@@ -181,6 +181,10 @@
         default_ttl: 3600
         primary_ns: "ns1.internal.example.com"
         admin_email: "admin.internal.example.com"
+        # 未匹配记录转发给上游，实现部分授权（按需配置转发：如下的本地解析，其余交给公共 DNS）
+        forward_to:
+          - 8.8.8.8
+          - 114.114.114.114
         records:
           # ============================================================
           # A 记录 - IPv4 地址映射 (推荐 TTL: 60 秒)
@@ -358,6 +362,10 @@
       # 示例: 反向解析区域
       - name: "1.168.192.in-addr.arpa"
         default_ttl: 3600
+        # 未匹配记录转发给上游，实现部分授权
+        forward_to:
+          - 8.8.8.8
+          - 114.114.114.114
         records:
           # PTR 记录 - 反向解析
           - type: "PTR"
@@ -380,6 +388,10 @@
       # 指定唯一的反向解析名称，避免和正向解析区域重复（解决：每次 ping 的 ICMP 回复行显示的域名都不一样）
       - name: "1.100.10.in-addr.arpa"
         default_ttl: 3600
+        # 未匹配记录转发给上游，实现部分授权
+        forward_to:
+          - 8.8.8.8
+          - 114.114.114.114
         records:
           - type: "PTR"
             name: "212"

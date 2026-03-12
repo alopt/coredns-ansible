@@ -38,7 +38,18 @@
 {% endfor %}
         fallthrough
     }
+    template IN AAAA {
+        # {{ rule.comment | default('正则匹配规则') }} - IPv6 NODATA (防止 NXDOMAIN 阻断 A 查询)
+        match {{ rule.pattern }}
+        rcode NOERROR
+        fallthrough
+    }
 {% endfor %}
+{% endif %}
+{% if zone.forward_to is defined %}
+    # 未匹配记录转发给上游 DNS (部分授权场景)
+    forward . {{ zone.forward_to if zone.forward_to is string else zone.forward_to | join(' ') }}
+
 {% endif %}
 
     log . {{ coredns_log_format }}

@@ -169,7 +169,7 @@ coredns_reload_method: "reload"
 docker_daemon_config: true
 docker_debug: false
 docker_experimental: false
-docker_iptables: false
+docker_iptables: true
 docker_log_max_file: "7"
 docker_log_max_size: "50m"
 docker_registry_mirrors:
